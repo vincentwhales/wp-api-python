@@ -27,7 +27,7 @@ setup(
     description="A Python wrapper for the Wordpress REST API",
     long_description=README,
     author="Claudio Sanches @ WooThemes",
-    url="https://github.com/woothemes/wc-api-python",
+    url="https://github.com/woocommerce/wc-api-python",
     license="MIT License",
     packages=[
         "wordpress"
