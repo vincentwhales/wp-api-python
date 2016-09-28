@@ -13,6 +13,7 @@ Roadmap
 
 - [x] Create initial fork
 - [ ] Implement 3-legged OAuth on Wordpress client
+- [ ] Implement iterator for convent access to API items
 
 Requirements
 ------------
@@ -113,7 +114,7 @@ Options
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``consumerSecret``    | ``string``  | yes      | Your API consumer secret                                                                              |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
-| ``api``               | ``string``  | no       | Allow requests to chose which api to use, defaults to ``wp-json``, can be arbitrary eg ``wc-api`` or ``oembed``    |
+| ``api``               | ``string``  | no       | Determines which api to use, defaults to ``wp-json``, can be arbitrary: ``wc-api``, ``oembed``        |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``version``           | ``string``  | no       | API version, default is ``wp/v2``, can be ``wp/v2`` if using ``wp-api``                               |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
