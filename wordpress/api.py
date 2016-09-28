@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """
-WooCommerce API Class
+Wordpress API Class
 """
 
-__title__ = "woocommerce-api"
+__title__ = "wordpress-api"
 __version__ = "1.2.0"
 __author__ = "Claudio Sanches @ WooThemes"
 __license__ = "MIT"
 
 from requests import request
 from json import dumps as jsonencode
-from woocommerce.oauth import OAuth
+from wordpress.oauth import OAuth
 
 
 class API(object):
@@ -21,8 +21,8 @@ class API(object):
         self.url = url
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
-        self.wp_api = kwargs.get("wp_api", False)
-        self.version = kwargs.get("version", "v3")
+        self.api = kwargs.get("api", "wp-json")
+        self.version = kwargs.get("version", "wp/v2")
         self.is_ssl = self.__is_ssl()
         self.timeout = kwargs.get("timeout", 5)
         self.verify_ssl = kwargs.get("verify_ssl", True)
@@ -35,15 +35,18 @@ class API(object):
     def __get_url(self, endpoint):
         """ Get URL for requests """
         url = self.url
-        api = "wc-api"
 
-        if url.endswith("/") is False:
-            url = "%s/" % url
+        if url.endswith("/"):
+            url = url[:-1] #take last char off
 
-        if self.wp_api:
-            api = "wp-json"
+        url_components = [
+            url,
+            self.api,
+            self.version,
+            endpoint
+        ]
 
-        return "%s%s/%s/%s" % (url, api, self.version, endpoint)
+        return "/".join(component for component in url_components if component)
 
     def __get_oauth_url(self, url, method):
         """ Generate oAuth1.0a URL """
@@ -63,7 +66,7 @@ class API(object):
         auth = None
         params = {}
         headers = {
-            "user-agent": "WooCommerce API Client-Python/%s" % __version__,
+            "user-agent": "Wordpress API Client-Python/%s" % __version__,
             "content-type": "application/json;charset=utf-8",
             "accept": "application/json"
         }

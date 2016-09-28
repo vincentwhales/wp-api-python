@@ -1,55 +1,103 @@
-WooCommerce API - Python Client
+Wordpress API - Python Client
 ===============================
 
-A Python wrapper for the WooCommerce REST API. Easily interact with the WooCommerce REST API using this library.
+A Python wrapper for the Wordpress REST API that also works on the WooCommerce REST API v1-3 and WooCommerce WP-API v1.
+Forked from the Wordpress API written by Claudio Sanches @ WooThemes and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
 
-.. image:: https://secure.travis-ci.org/woothemes/wc-api-python.svg
-    :target: http://travis-ci.org/woothemes/wc-api-python
+I created this fork because I prefer the way that the wc-api-python client interfaces with
+the Wordpress API compared to the existing python client, https://pypi.python.org/pypi/wordpress_json
+which does not support OAuth authentication, only Basic Authentication (very unsecure)
 
-.. image:: https://img.shields.io/pypi/v/woocommerce.svg
-    :target: https://pypi.python.org/pypi/WooCommerce
+Roadmap
+-------
+
+- [x] Create initial fork
+- [ ] Implement 3-legged OAuth on Wordpress client
+
+Requirements
+------------
+
+Your site should have the following plugins installed on your wordpress site:
+
+- **WP REST API** (recommended version: 2.0+)
+- **WP REST API - OAuth 1.0a Server** (https://github.com/WP-API/OAuth1)
+- **WP REST API - Meta Endpoints** (optional)
 
 
 Installation
 ------------
 
+Download this repo and use setuptools to install the package
+
 .. code-block:: bash
 
-    pip install woocommerce
+    pip install setuptools
+    git clone https://github.com/derwentx/wp-api-python
+    python setup.py install
 
 Getting started
 ---------------
 
-Generate API credentials (Consumer Key & Consumer Secret) following this instructions http://docs.woothemes.com/document/woocommerce-rest-api/.
+Generate API credentials (Consumer Key & Consumer Secret) following these instructions: http://v2.wp-api.org/guide/authentication/
 
-Check out the WooCommerce API endpoints and data that can be manipulated in http://woothemes.github.io/woocommerce-rest-api-docs/.
+Check out the Wordpress API endpoints and data that can be manipulated in http://v2.wp-api.org/reference/.
 
 Setup
 -----
+
+Setup for the old Wordpress API:
+
+.. code-block:: python
+
+    from wordpress import API
+
+    wpapi = API(
+        url="http://example.com",
+        consumer_key="XXXXXXXXXXXX",
+        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        api="wp-json",
+        version=None
+    )
+
+Setup for the new WP REST API v2:
+
+.. code-block:: python
+
+    #...
+
+    wpapi = API(
+        url="http://example.com",
+        consumer_key="XXXXXXXXXXXX",
+        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        api="wp-json",
+        version="wp/v2"
+    )
 
 Setup for the old WooCommerce API v3:
 
 .. code-block:: python
 
-    from woocommerce import API
+    #...
 
     wcapi = API(
         url="http://example.com",
         consumer_key="ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         consumer_secret="cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        api="wc-api",
+        version="v3"
     )
 
 Setup for the new WP REST API integration (WooCommerce 2.6 or later):
 
 .. code-block:: python
 
-    from woocommerce import API
+    #...
 
     wcapi = API(
         url="http://example.com",
         consumer_key="ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         consumer_secret="cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        wp_api=True,
+        api="wp-json",
         version="wc/v1"
     )
 
@@ -59,15 +107,15 @@ Options
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 |         Option        |     Type    | Required |                                              Description                                              |
 +=======================+=============+==========+=======================================================================================================+
-| ``url``               | ``string``  | yes      | Your Store URL, example: http://woo.dev/                                                              |
+| ``url``               | ``string``  | yes      | Your Store URL, example: http://wp.dev/                                                               |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``consumerKey``       | ``string``  | yes      | Your API consumer key                                                                                 |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``consumerSecret``    | ``string``  | yes      | Your API consumer secret                                                                              |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
-| ``wp_api``            | ``bool``    | no       | Allow requests to the WP REST API (WooCommerce 2.6 or later)                                          |
+| ``api``               | ``string``  | no       | Allow requests to chose which api to use, defaults to ``wp-json``, can be arbitrary eg ``wc-api`` or ``oembed``    |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
-| ``version``           | ``string``  | no       | API version, default is ``v3``                                                                        |
+| ``version``           | ``string``  | no       | API version, default is ``wp/v2``, can be ``wp/v2`` if using ``wp-api``                               |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``timeout``           | ``integer`` | no       | Connection timeout, default is ``5``                                                                  |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
@@ -82,7 +130,7 @@ Methods
 +--------------+----------------+------------------------------------------------------------------+
 |    Params    |      Type      |                           Description                            |
 +==============+================+==================================================================+
-| ``endpoint`` | ``string``     | WooCommerce API endpoint, example: ``customers`` or ``order/12`` |
+| ``endpoint`` | ``string``     | Wordpress API endpoint, example: ``posts`` or ``user/12``        |
 +--------------+----------------+------------------------------------------------------------------+
 | ``data``     | ``dictionary`` | Data that will be converted to JSON                              |
 +--------------+----------------+------------------------------------------------------------------+
@@ -121,7 +169,7 @@ Example of returned data:
 
 .. code-block:: bash
 
-    >>> r = wcapi.get("products")
+    >>> r = wpapi.get("posts")
     >>> r.status_code
     200
     >>> r.headers['content-type']
@@ -129,56 +177,15 @@ Example of returned data:
     >>> r.encoding
     'UTF-8'
     >>> r.text
-    u'{"products":[{"title":"Flying Ninja","id":70,...' // Json text
+    u'{"posts":[{"title":"Flying Ninja","id":70,...' // Json text
     >>> r.json()
-    {u'products': [{u'sold_individually': False,... // Dictionary data
+    {u'posts': [{u'sold_individually': False,... // Dictionary data
 
 
 Changelog
 ---------
 
-1.2.0 - 2016/06/22
+1.2.0 - 2016/09/28
 ~~~~~~~~~~~~~~~~~~
 
-- Added option ``query_string_auth`` to allow Basic Auth as query strings.
-
-1.1.1 - 2016/06/03
-~~~~~~~~~~~~~~~~~~
-
-- Fixed oAuth signature for WP REST API.
-
-1.1.0 - 2016/05/09
-~~~~~~~~~~~~~~~~~~
-
-- Added support for WP REST API.
-- Added method to do HTTP OPTIONS requests.
-
-1.0.5 - 2015/12/07
-~~~~~~~~~~~~~~~~~~
-
-- Fixed oAuth filters sorting.
-
-1.0.4 - 2015/09/25
-~~~~~~~~~~~~~~~~~~
-
-- Implemented ``timeout`` argument for ``API`` class.
-
-1.0.3 - 2015/08/07
-~~~~~~~~~~~~~~~~~~
-
-- Forced utf-8 encoding on ``API.__request()`` to avoid ``UnicodeDecodeError``
-
-1.0.2 - 2015/08/05
-~~~~~~~~~~~~~~~~~~
-
-- Fixed handler for query strings
-
-1.0.1 - 2015/07/13
-~~~~~~~~~~~~~~~~~~
-
-- Fixed support for Python 2.6
-
-1.0.1 - 2015/07/12
-~~~~~~~~~~~~~~~~~~
-
-- Initial version
+- Initial fork

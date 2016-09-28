@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-WooCommerce OAuth1.0a Class
+Wordpress OAuth1.0a Class
 """
 
-__title__ = "woocommerce-oauth"
+__title__ = "wordpress-oauth"
 __version__ = "1.2.0"
 __author__ = "Claudio Sanches @ WooThemes"
 __license__ = "MIT"
@@ -34,7 +34,7 @@ class OAuth(object):
         self.url = url
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
-        self.version = kwargs.get("version", "v3")
+        self.version = kwargs.get("version", "wc/v2")
         self.method = kwargs.get("method", "GET")
 
     def get_oauth_url(self):

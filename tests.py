@@ -1,17 +1,17 @@
 """ API Tests """
 import unittest
-import woocommerce
-from woocommerce import oauth
+import wordpress
+from wordpress import oauth
 from httmock import all_requests, HTTMock
 
 
-class WooCommerceTestCase(unittest.TestCase):
+class WordpressTestCase(unittest.TestCase):
     """Test case for the client methods."""
 
     def setUp(self):
         self.consumer_key = "ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         self.consumer_secret = "cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        self.api = woocommerce.API(
+        self.api = wordpress.API(
             url="http://woo.test",
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret
@@ -19,7 +19,7 @@ class WooCommerceTestCase(unittest.TestCase):
 
     def test_version(self):
         """ Test default version """
-        api = woocommerce.API(
+        api = wordpress.API(
             url="https://woo.test",
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret
@@ -29,7 +29,7 @@ class WooCommerceTestCase(unittest.TestCase):
 
     def test_non_ssl(self):
         """ Test non-ssl """
-        api = woocommerce.API(
+        api = wordpress.API(
             url="http://woo.test",
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret
@@ -38,7 +38,7 @@ class WooCommerceTestCase(unittest.TestCase):
 
     def test_with_ssl(self):
         """ Test non-ssl """
-        api = woocommerce.API(
+        api = wordpress.API(
             url="https://woo.test",
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret
@@ -47,7 +47,7 @@ class WooCommerceTestCase(unittest.TestCase):
 
     def test_with_timeout(self):
         """ Test non-ssl """
-        api = woocommerce.API(
+        api = wordpress.API(
             url="https://woo.test",
             consumer_key=self.consumer_key,
             consumer_secret=self.consumer_secret,
