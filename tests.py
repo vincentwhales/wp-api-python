@@ -288,12 +288,12 @@ class OAuthTestcases(unittest.TestCase):
         normalized_params = OAuth.normalize_params(params)
         self.assertEqual(expected_normalized_params, normalized_params)
 
-    def generate_oauth_signature(self):
+    def test_generate_oauth_signature(self):
         base_url = "http://localhost:8888/wordpress/"
         api_name = 'wc-api'
         api_ver = 'v3'
         endpoint = 'products/99'
-        signature_method = "HAMC-SHA1"
+        signature_method = "HMAC-SHA1"
         consumer_key = "ck_681c2be361e415519dce4b65ee981682cda78bc6"
         consumer_secret = "cs_b11f652c39a0afd3752fc7bb0c56d60d58da5877"
 
@@ -319,6 +319,38 @@ class OAuthTestcases(unittest.TestCase):
         sig = wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
         expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
         self.assertEqual(sig, expected_sig)
+
+    # def generate_oauth_signature(self):
+    #     base_url = "http://localhost:8888/wordpress/"
+    #     api_name = 'wc-api'
+    #     api_ver = 'v3'
+    #     endpoint = 'products/99'
+    #     signature_method = "HAMC-SHA1"
+    #     consumer_key = "ck_681c2be361e415519dce4b65ee981682cda78bc6"
+    #     consumer_secret = "cs_b11f652c39a0afd3752fc7bb0c56d60d58da5877"
+    #
+    #     wcapi = API(
+    #         url=base_url,
+    #         consumer_key=consumer_key,
+    #         consumer_secret=consumer_secret,
+    #         api=api_name,
+    #         version=api_ver,
+    #         signature_method=signature_method
+    #     )
+    #
+    #     endpoint_url = UrlUtils.join_components([base_url, api_name, api_ver, endpoint])
+    #
+    #     params = OrderedDict()
+    #     params["oauth_consumer_key"] = consumer_key
+    #     params["oauth_timestamp"] = "1477041328"
+    #     params["oauth_nonce"] = "166182658461433445531477041328"
+    #     params["oauth_signature_method"] = signature_method
+    #     params["oauth_version"] = "1.0"
+    #     params["oauth_callback"] = 'localhost:8888/wordpress'
+    #
+    #     sig = wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
+    #     expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
+    #     self.assertEqual(sig, expected_sig)
 
 class OAuth3LegTestcases(unittest.TestCase):
     def setUp(self):

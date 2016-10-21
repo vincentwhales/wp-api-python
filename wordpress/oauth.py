@@ -194,3 +194,5 @@ class OAuth_3Leg(OAuth):
         return self.access_token, self.access_token_secret
 
     # def get_user_confirmation(self):
+    #
+    #     authorize_url = self.authentication['oauth1']['authorize']
