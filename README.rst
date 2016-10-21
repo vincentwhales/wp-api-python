@@ -2,7 +2,7 @@ Wordpress API - Python Client
 ===============================
 
 A Python wrapper for the Wordpress REST API that also works on the WooCommerce REST API v1-3 and WooCommerce WP-API v1.
-Forked from the Wordpress API written by Claudio Sanches @ WooThemes and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
+Forked from the excellent Wordpress API written by Claudio Sanches @ WooThemes and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
 
 I created this fork because I prefer the way that the wc-api-python client interfaces with
 the Wordpress API compared to the existing python client, https://pypi.python.org/pypi/wordpress_json
@@ -116,7 +116,7 @@ Options
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``api``               | ``string``  | no       | Determines which api to use, defaults to ``wp-json``, can be arbitrary: ``wc-api``, ``oembed``        |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
-| ``version``           | ``string``  | no       | API version, default is ``wp/v2``, can be ``wp/v2`` if using ``wp-api``                               |
+| ``version``           | ``string``  | no       | API version, default is ``wp/v2``, can be ``v3`` or  ``wc/v1`` if using ``wc-api``                    |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+
 | ``timeout``           | ``integer`` | no       | Connection timeout, default is ``5``                                                                  |
 +-----------------------+-------------+----------+-------------------------------------------------------------------------------------------------------+

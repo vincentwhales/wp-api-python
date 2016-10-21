@@ -14,4 +14,7 @@ __version__ = "1.2.0"
 __author__ = "Claudio Sanches @ WooThemes"
 __license__ = "MIT"
 
+__default_api_version__ = "wp/v2"
+__default_api__ = "wp-json"
+
 from wordpress.api import API

@@ -5,94 +5,96 @@ Wordpress API Class
 """
 
 __title__ = "wordpress-api"
-__version__ = "1.2.0"
-__author__ = "Claudio Sanches @ WooThemes"
-__license__ = "MIT"
 
 from requests import request
 from json import dumps as jsonencode
-from wordpress.oauth import OAuth
+from wordpress.oauth import OAuth, OAuth_3Leg
+from wordpress.transport import API_Requests_Wrapper
 
 
 class API(object):
     """ API Class """
 
     def __init__(self, url, consumer_key, consumer_secret, **kwargs):
-        self.url = url
-        self.consumer_key = consumer_key
-        self.consumer_secret = consumer_secret
-        self.api = kwargs.get("api", "wp-json")
-        self.version = kwargs.get("version", "wp/v2")
-        self.is_ssl = self.__is_ssl()
-        self.timeout = kwargs.get("timeout", 5)
-        self.verify_ssl = kwargs.get("verify_ssl", True)
-        self.query_string_auth = kwargs.get("query_string_auth", False)
 
-    def __is_ssl(self):
-        """ Check if url use HTTPS """
-        return self.url.startswith("https")
+        self.requester = API_Requests_Wrapper(url=url, **kwargs)
 
-    def __get_url(self, endpoint):
-        """ Get URL for requests """
-        url = self.url
-
-        if url.endswith("/"):
-            url = url[:-1] #take last char off
-
-        url_components = [
-            url,
-            self.api,
-            self.version,
-            endpoint
-        ]
-
-        return "/".join(component for component in url_components if component)
-
-    def __get_oauth_url(self, url, method):
-        """ Generate oAuth1.0a URL """
-        oauth = OAuth(
-            url=url,
-            consumer_key=self.consumer_key,
-            consumer_secret=self.consumer_secret,
-            version=self.version,
-            method=method
+        oauth_kwargs = dict(
+            requester=self.requester,
+            consumer_key=consumer_key,
+            consumer_secret=consumer_secret,
         )
 
-        return oauth.get_oauth_url()
+        if kwargs.get('oauth1a_3leg'):
+            self.oauth1a_3leg = kwargs['oauth1a_3leg']
+            self.wp_user = kwargs['wp_user']
+            self.wp_pass = kwargs['wp_pass']
+            oauth_kwargs['callback'] = kwargs['callback']
+            self.oauth = OAuth_3Leg( **oauth_kwargs )
+        else:
+            self.oauth = OAuth( **oauth_kwargs )
+
+    @property
+    def timeout(self):
+        return self.requester.timeout
+
+    @property
+    def query_string_auth(self):
+        return self.requester.query_string_auth
+
+    @property
+    def namespace(self):
+        return self.requester.api
+
+    @property
+    def version(self):
+        return self.requester.api_version
+
+    @property
+    def verify_ssl(self):
+        return self.requester.verify_ssl
+
+    @property
+    def is_ssl(self):
+        return self.requester.is_ssl
+
+    @property
+    def consumer_key(self):
+        return self.oauth.consumer_key
+
+    @property
+    def consumer_secret(self):
+        return self.oauth.consumer_secret
+
+    @property
+    def callback(self):
+        return self.oauth.callback
 
     def __request(self, method, endpoint, data):
         """ Do requests """
-        url = self.__get_url(endpoint)
+        endpoint_url = self.requester.endpoint_url(endpoint)
         auth = None
         params = {}
-        headers = {
-            "user-agent": "Wordpress API Client-Python/%s" % __version__,
-            "content-type": "application/json;charset=utf-8",
-            "accept": "application/json"
-        }
 
-        if self.is_ssl is True and self.query_string_auth is False:
-            auth = (self.consumer_key, self.consumer_secret)
-        elif self.is_ssl is True and self.query_string_auth is True:
+        if self.requester.is_ssl is True and self.requester.query_string_auth is False:
+            auth = (self.oauth.consumer_key, self.oauth.consumer_secret)
+        elif self.requester.is_ssl is True and self.requester.query_string_auth is True:
             params = {
-                "consumer_key": self.consumer_key,
-                "consumer_secret": self.consumer_secret
+                "consumer_key": self.oauth.consumer_key,
+                "consumer_secret": self.oauth.consumer_secret
             }
         else:
-            url = self.__get_oauth_url(url, method)
+            endpoint_url = self.oauth.get_oauth_url(endpoint_url, method)
 
         if data is not None:
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
 
-        return request(
+        return self.requester.request(
             method=method,
-            url=url,
-            verify=self.verify_ssl,
+            url=endpoint_url,
             auth=auth,
             params=params,
-            data=data,
-            timeout=self.timeout,
-            headers=headers
+            data=data
         )
 
     def get(self, endpoint):

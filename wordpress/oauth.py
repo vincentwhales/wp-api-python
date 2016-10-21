@@ -5,87 +5,109 @@ Wordpress OAuth1.0a Class
 """
 
 __title__ = "wordpress-oauth"
-__version__ = "1.2.0"
-__author__ = "Claudio Sanches @ WooThemes"
-__license__ = "MIT"
 
 from time import time
 from random import randint
 from hmac import new as HMAC
 from hashlib import sha1, sha256
 from base64 import b64encode
+import binascii
+import webbrowser
+
 
 try:
-    from urllib.parse import urlencode, quote, unquote, parse_qsl, urlparse
+    from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
+    from urllib.parse import ParseResult as URLParseResult
 except ImportError:
     from urllib import urlencode, quote, unquote
-    from urlparse import parse_qsl, urlparse
+    from urlparse import parse_qs, parse_qsl, urlparse, urlunparse
+    from urlparse import ParseResult as URLParseResult
 
 try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
 
+from wordpress.helpers import UrlUtils
 
 class OAuth(object):
+    oauth_version = '1.0'
+
     """ API Class """
 
-    def __init__(self, url, consumer_key, consumer_secret, **kwargs):
-        self.url = url
+    def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
+        self.requester = requester
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
-        self.version = kwargs.get("version", "wc/v2")
-        self.method = kwargs.get("method", "GET")
+        self.signature_method = kwargs.get('signature_method', 'HMAC-SHA1')
 
-    def get_oauth_url(self):
-        """ Returns the URL with OAuth params """
-        params = OrderedDict()
+    @property
+    def api_version(self):
+        return self.requester.api_version
 
-        if "?" in self.url:
-            url = self.url[:self.url.find("?")]
-            for key, value in parse_qsl(urlparse(self.url).query):
+    @property
+    def api_namespace(self):
+        return self.requester.api
+
+    def add_params_sign(self, method, url, params):
+        """ Adds the params to a given url, signs the url with secret and returns a signed url """
+        urlparse_result = urlparse(url)
+
+        if urlparse_result.query:
+            for key, value in parse_qsl(urlparse_result.query):
                 params[key] = value
-        else:
-            url = self.url
 
-        params["oauth_consumer_key"] = self.consumer_key
-        params["oauth_timestamp"] = int(time())
-        params["oauth_nonce"] = self.generate_nonce()
-        params["oauth_signature_method"] = "HMAC-SHA256"
-        params["oauth_signature"] = self.generate_oauth_signature(params, url)
+        params["oauth_signature"] = self.generate_oauth_signature(method, params, UrlUtils.substitute_query(url))
 
         query_string = urlencode(params)
 
-        return "%s?%s" % (url, query_string)
+        return UrlUtils.substitute_query(url, query_string)
 
-    def generate_oauth_signature(self, params, url):
+    def get_oauth_url(self, endpoint_url, method):
+        """ Returns the URL with OAuth params """
+        params = OrderedDict()
+        params["oauth_consumer_key"] = self.consumer_key
+        params["oauth_timestamp"] = self.generate_timestamp()
+        params["oauth_nonce"] = self.generate_nonce()
+        params["oauth_signature_method"] = self.signature_method
+
+        return self.add_params_sign(method, endpoint_url, params)
+
+    def generate_oauth_signature(self, method, params, url):
         """ Generate OAuth Signature """
         if "oauth_signature" in params.keys():
             del params["oauth_signature"]
 
         base_request_uri = quote(url, "")
-        params = self.sorted_params(params)
-        params = self.normalize_parameters(params)
-        query_params = ["{param_key}%3D{param_value}".format(param_key=key, param_value=value)
-                        for key, value in params.items()]
+        query_string = quote( self.normalize_params(params), safe='~')
+        string_to_sign = "&".join([method, base_request_uri, query_string])
 
-        query_string = "%26".join(query_params)
-        string_to_sign = "%s&%s&%s" % (self.method, base_request_uri, query_string)
+        if self.api_namespace == 'wc-api' \
+        and self.api_version in ["v1", "v2"]:
+            key = self.consumer_secret
+        else:
+            if hasattr(self, 'oauth_token_secret'):
+                oauth_token_secret = getattr(self, 'oauth_token_secret')
+            else:
+                oauth_token_secret = ''
+            key = "&".join([self.consumer_secret, oauth_token_secret])
 
-        consumer_secret = str(self.consumer_secret)
-        if self.version not in ["v1", "v2"]:
-            consumer_secret += "&"
+        if self.signature_method == 'HMAC-SHA1':
+            hmac_mod = sha1
+        elif self.signature_method == 'HMAC-SHA256':
+            hmac_mod = sha256
+        else:
+            raise UserWarning("Unknown signature_method")
 
-        hash_signature = HMAC(
-            consumer_secret.encode(),
-            str(string_to_sign).encode(),
-            sha256
-        ).digest()
+        sig = HMAC(key, string_to_sign, hmac_mod)
+        sig_b64 = binascii.b2a_base64(sig.digest())[:-1]
+        # print "string_to_sign: ", string_to_sign
+        # print "key: ", key
+        # print "sig_b64: ", sig_b64
+        return sig_b64
 
-        return b64encode(hash_signature).decode("utf-8").replace("\n", "")
-
-    @staticmethod
-    def sorted_params(params):
+    @classmethod
+    def sorted_params(cls, params):
         ordered = OrderedDict()
         base_keys = sorted(set(k.split('[')[0] for k in params.keys()))
 
@@ -96,37 +118,15 @@ class OAuth(object):
 
         return ordered
 
-    @staticmethod
-    def normalize_parameters(params):
+    @classmethod
+    def normalize_params(cls, params):
         """ Normalize parameters """
-        params = params or {}
-        normalized_parameters = OrderedDict()
+        return urlencode(cls.sorted_params(params))
 
-        def get_value_like_as_php(val):
-            """ Prepare value for quote """
-            try:
-                base = basestring
-            except NameError:
-                base = (str, bytes)
-
-            if isinstance(val, base):
-                return val
-            elif isinstance(val, bool):
-                return "1" if val else ""
-            elif isinstance(val, int):
-                return str(val)
-            elif isinstance(val, float):
-                return str(int(val)) if val % 1 == 0 else str(val)
-            else:
-                return ""
-
-        for key, value in params.items():
-            value = get_value_like_as_php(value)
-            key = quote(unquote(str(key))).replace("%", "%25")
-            value = quote(unquote(str(value))).replace("%", "%25")
-            normalized_parameters[key] = value
-
-        return normalized_parameters
+    @staticmethod
+    def generate_timestamp():
+        """ Generate timestamp """
+        return int(time())
 
     @staticmethod
     def generate_nonce():
@@ -137,3 +137,60 @@ class OAuth(object):
             "secret".encode(),
             sha1
         ).hexdigest()
+
+class OAuth_3Leg(OAuth):
+    """ Provides 3 legged OAuth1a, mostly based off this: http://www.lexev.org/en/2015/oauth-step-step/"""
+
+    oauth_version = '1.0A'
+
+    def __init__(self, requester, consumer_key, consumer_secret, callback, **kwargs):
+        super(OAuth_3Leg, self).__init__(requester, consumer_key, consumer_secret, **kwargs)
+        self.callback = callback
+        self._authentication = None
+        self.access_token = None
+        self.access_token_secret = None
+
+    @property
+    def authentication(self):
+        if not self._authentication:
+            self._authentication = self.discover_auth()
+        return self._authentication
+
+    def discover_auth(self):
+        """ Discovers the location of authentication resourcers from the API"""
+        discovery_url = self.requester.api_url
+
+        response = self.requester.request('GET', discovery_url)
+        response_json = response.json()
+
+        assert \
+            response_json['authentication'], \
+            "resopnse should include location of authentication resources, resopnse: %s" % response.text()
+
+        return response_json['authentication']
+
+    def request_access_token(self):
+        params = OrderedDict()
+        params["oauth_consumer_key"] = self.consumer_key
+        params["oauth_timestamp"] = self.generate_timestamp()
+        params["oauth_nonce"] = self.generate_nonce()
+        params["oauth_signature_method"] = self.signature_method
+        params["oauth_callback"] = self.callback
+        # params["oauth_version"] = self.oauth_version
+
+        request_token_url = self.authentication['oauth1']['request']
+        request_token_url = self.add_params_sign("GET", request_token_url, params)
+
+        response = self.requester.request("GET", request_token_url)
+        resp_content = parse_qs(response.text)
+
+        try:
+            self.access_token = resp_content['oauth_token']
+            self.access_token_secret = resp_content['oauth_token_secret']
+        except:
+            raise UserWarning("Could not parse access_token or access_token_secret in response from %s : %s" \
+                % (repr(response.request.url), repr(response.text)))
+
+        return self.access_token, self.access_token_secret
+
+    # def get_user_confirmation(self):
