@@ -47,6 +47,16 @@ class UrlUtils(object):
         ))
 
     @classmethod
+    def add_query(cls, url, new_key, new_value):
+        """ adds a query parameter to the given url """
+        new_query_item = '='.join([quote(new_key, safe='[]'), quote(new_value)])
+        new_query_string = "&".join(SeqUtils.filter_true([
+            urlparse(url).query,
+            new_query_item
+        ]))
+        return cls.substitute_query(url, new_query_string)
+
+    @classmethod
     def is_ssl(cls, url):
         return urlparse(url).scheme == 'https'
 

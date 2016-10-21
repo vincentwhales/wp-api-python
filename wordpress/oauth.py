@@ -121,7 +121,11 @@ class OAuth(object):
     @classmethod
     def normalize_params(cls, params):
         """ Normalize parameters """
-        return urlencode(cls.sorted_params(params))
+        params = cls.sorted_params(params)
+        params = OrderedDict(
+            [(key, UrlUtils.get_value_like_as_php(value)) for key, value in params.items()]
+        )
+        return urlencode(params)
 
     @staticmethod
     def generate_timestamp():
@@ -147,6 +151,8 @@ class OAuth_3Leg(OAuth):
         super(OAuth_3Leg, self).__init__(requester, consumer_key, consumer_secret, **kwargs)
         self.callback = callback
         self._authentication = None
+        self.request_token = None
+        self.request_token_secret = None
         self.access_token = None
         self.access_token_secret = None
 
@@ -169,7 +175,7 @@ class OAuth_3Leg(OAuth):
 
         return response_json['authentication']
 
-    def request_access_token(self):
+    def get_request_token(self):
         params = OrderedDict()
         params["oauth_consumer_key"] = self.consumer_key
         params["oauth_timestamp"] = self.generate_timestamp()
@@ -185,14 +191,16 @@ class OAuth_3Leg(OAuth):
         resp_content = parse_qs(response.text)
 
         try:
-            self.access_token = resp_content['oauth_token']
-            self.access_token_secret = resp_content['oauth_token_secret']
+            self.request_token = resp_content['oauth_token']
+            self.request_token_secret = resp_content['oauth_token_secret']
         except:
-            raise UserWarning("Could not parse access_token or access_token_secret in response from %s : %s" \
+            raise UserWarning("Could not parse request_token or request_token_secret in response from %s : %s" \
                 % (repr(response.request.url), repr(response.text)))
 
-        return self.access_token, self.access_token_secret
-
+        return self.request_token, self.request_token_secret
+    # 
     # def get_user_confirmation(self):
-    #
     #     authorize_url = self.authentication['oauth1']['authorize']
+    #     authorize_url = UrlUtils.add_query(authorize_url, 'oauth_token', self.request_token)
+    #
+    #     return self.requester.request("GET", authorize_url)

@@ -181,6 +181,12 @@ class HelperTestcase(unittest.TestCase):
             "https://woo.test:8888/sdf?newparam=newvalue&othernewparam=othernewvalue"
         )
 
+    def test_url_add_query(self):
+        self.assertEqual(
+            "https://woo.test:8888/sdf?param=value&newparam=newvalue",
+            UrlUtils.add_query("https://woo.test:8888/sdf?param=value", 'newparam', 'newvalue')
+        )
+
     def test_url_join_components(self):
         self.assertEqual(
             'https://woo.test:8888/wp-json',
@@ -419,13 +425,13 @@ class OAuth3LegTestcases(unittest.TestCase):
             }
         )
 
-    def test_request_access_token(self):
+    def test_get_request_token(self):
 
         with HTTMock(self.woo_api_mock):
             authentication = self.api.oauth.authentication
             self.assertTrue(authentication)
 
         with HTTMock(self.woo_authentication_mock):
-            access_token, access_token_secret = self.api.oauth.request_access_token()
+            access_token, access_token_secret = self.api.oauth.get_request_token()
             self.assertEquals(access_token, ['XXXXXXXXXXXX'])
             self.assertEquals(access_token_secret, ['YYYYYYYYYYYY'])
