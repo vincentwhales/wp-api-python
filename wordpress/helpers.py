@@ -16,6 +16,9 @@ except ImportError:
     from urlparse import parse_qsl, urlparse, urlunparse
     from urlparse import ParseResult as URLParseResult
 
+from bs4 import BeautifulSoup
+
+
 class StrUtils(object):
     @classmethod
     def remove_tail(cls, string, tail):
@@ -49,7 +52,8 @@ class UrlUtils(object):
     @classmethod
     def add_query(cls, url, new_key, new_value):
         """ adds a query parameter to the given url """
-        new_query_item = '='.join([quote(new_key, safe='[]'), quote(new_value)])
+        new_query_item = '%s=%s' % (quote(str(new_key)), quote(str(new_value)))
+        # new_query_item = '='.join([quote(new_key), quote(new_value)])
         new_query_string = "&".join(SeqUtils.filter_true([
             urlparse(url).query,
             new_query_item
@@ -82,3 +86,8 @@ class UrlUtils(object):
             return str(int(val)) if val % 1 == 0 else str(val)
         else:
             return ""
+
+    @staticmethod
+    def beautify_response(response):
+        """ Returns a beautified response in the default locale """
+        return BeautifulSoup(response.text, 'lxml').prettify().encode(errors='backslashreplace')

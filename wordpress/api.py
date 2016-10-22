@@ -27,9 +27,9 @@ class API(object):
 
         if kwargs.get('oauth1a_3leg'):
             self.oauth1a_3leg = kwargs['oauth1a_3leg']
-            self.wp_user = kwargs['wp_user']
-            self.wp_pass = kwargs['wp_pass']
             oauth_kwargs['callback'] = kwargs['callback']
+            oauth_kwargs['wp_user'] = kwargs['wp_user']
+            oauth_kwargs['wp_pass'] = kwargs['wp_pass']
             self.oauth = OAuth_3Leg( **oauth_kwargs )
         else:
             self.oauth = OAuth( **oauth_kwargs )

@@ -6,7 +6,7 @@ Wordpress Requests Class
 
 __title__ = "wordpress-requests"
 
-from requests import request
+from requests import Request, Session
 from json import dumps as jsonencode
 
 try:
@@ -22,7 +22,6 @@ from wordpress import __default_api_version__
 from wordpress import __default_api__
 from wordpress.helpers import SeqUtils, UrlUtils
 
-
 class API_Requests_Wrapper(object):
     """ provides a wrapper for making requests that handles session info """
     def __init__(self, url, **kwargs):
@@ -37,6 +36,7 @@ class API_Requests_Wrapper(object):
             "content-type": "application/json;charset=utf-8",
             "accept": "application/json"
         }
+        self.session = Session()
 
     @property
     def is_ssl(self):
@@ -57,15 +57,24 @@ class API_Requests_Wrapper(object):
             endpoint
         ])
 
-    def request(self, method, url, auth=None, params=None, data=None):
+    def request(self, method, url, auth=None, params=None, data=None, **kwargs):
         request_kwargs = dict(
             method=method,
             url=url,
+            headers=self.headers,
             verify=self.verify_ssl,
             timeout=self.timeout,
-            headers=self.headers
         )
+        request_kwargs.update(kwargs)
         if auth is not None: request_kwargs['auth'] = auth
         if params is not None: request_kwargs['params'] = params
         if data is not None: request_kwargs['data'] = data
-        return request(**request_kwargs)
+        return self.session.request(
+            **request_kwargs
+        )
+
+    def get(self, *args, **kwargs):
+        return self.request("GET", *args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        return self.request("POST", *args, **kwargs)
