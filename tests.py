@@ -236,6 +236,17 @@ class HelperTestcase(unittest.TestCase):
             StrUtils.remove_tail('sdf/','/')
         )
 
+    def test_str_remove_head(self):
+        self.assertEqual(
+            'sdf',
+            StrUtils.remove_head('/sdf', '/')
+        )
+
+        self.assertEqual(
+            'sdf',
+            StrUtils.decapitate('sdf', '/')
+        )
+
 class TransportTestcases(unittest.TestCase):
     def setUp(self):
         self.requester = API_Requests_Wrapper(
@@ -301,13 +312,6 @@ class OAuthTestcases(unittest.TestCase):
         self.assertEqual(
             self.wcapi.oauth.get_sign_key(self.consumer_secret),
             "%s&" % self.consumer_secret
-        )
-
-        oauth_token_secret = "PNW9j1yBki3e7M7EqB5qZxbe9n5tR6bIIefSMQ9M2pdyRI9g"
-
-        self.assertEqual(
-            self.wcapi.oauth.get_sign_key(self.consumer_secret, oauth_token_secret),
-            "%s&%s" % (self.consumer_secret, oauth_token_secret)
         )
 
 
@@ -414,6 +418,24 @@ class OAuth3LegTestcases(unittest.TestCase):
             'status_code':200,
             'content':"""oauth_token=XXXXXXXXXXXX&oauth_token_secret=YYYYYYYYYYYY"""
         }
+
+    def test_get_sign_key(self):
+        oauth_token_secret = "PNW9j1yBki3e7M7EqB5qZxbe9n5tR6bIIefSMQ9M2pdyRI9g"
+
+        key = self.api.oauth.get_sign_key(self.consumer_secret, oauth_token_secret)
+        self.assertEqual(
+            key,
+            "%s&%s" % (self.consumer_secret, oauth_token_secret)
+        )
+        self.assertEqual(type(key), type(""))
+
+        key = self.api.oauth.get_sign_key(None, oauth_token_secret)
+        self.assertEqual(
+            key,
+            oauth_token_secret
+        )
+        self.assertEqual(type(key), type(""))
+        
 
     def test_auth_discovery(self):
 

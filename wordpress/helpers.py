@@ -23,7 +23,19 @@ class StrUtils(object):
     @classmethod
     def remove_tail(cls, string, tail):
         if string.endswith(tail):
-            return string[:-len(tail)]
+            string = string[:-len(tail)]
+        return string
+
+    @classmethod
+    def remove_head(cls, string, head):
+        if string.startswith(head):
+            string = string[len(head):]
+        return string
+
+
+    @classmethod
+    def decapitate(cls, *args, **kwargs):
+        return cls.remove_head(*args, **kwargs)
 
 class SeqUtils(object):
     @classmethod

@@ -20,7 +20,7 @@ except ImportError:
 from wordpress import __version__
 from wordpress import __default_api_version__
 from wordpress import __default_api__
-from wordpress.helpers import SeqUtils, UrlUtils
+from wordpress.helpers import SeqUtils, UrlUtils, StrUtils
 
 class API_Requests_Wrapper(object):
     """ provides a wrapper for making requests that handles session info """
@@ -50,6 +50,7 @@ class API_Requests_Wrapper(object):
         ])
 
     def endpoint_url(self, endpoint):
+        endpoint = StrUtils.decapitate(endpoint, '/')
         return UrlUtils.join_components([
             self.url,
             self.api,

@@ -51,14 +51,15 @@ class OAuth(object):
     def api_namespace(self):
         return self.requester.api
 
-    def get_sign_key(self, consumer_secret, request_token_secret=None):
+    def get_sign_key(self, consumer_secret):
+        "gets consumer_secret and turns it into a string suitable for signing"
+        consumer_secret = str(consumer_secret) if consumer_secret else ''
         if self.api_namespace == 'wc-api' \
         and self.api_version in ["v1", "v2"]:
+            # special conditions for wc-api v1-2
             key = consumer_secret
         else:
-            if not request_token_secret:
-                request_token_secret = ''
-            key = "&".join([consumer_secret, request_token_secret])
+            key = "%s&" % consumer_secret
         return key
 
     def add_params_sign(self, method, url, params, key=None):
@@ -105,10 +106,10 @@ class OAuth(object):
         else:
             raise UserWarning("Unknown signature_method")
 
+        # print "string_to_sign: ", repr(string_to_sign)
+        # print "key: ", repr(key)
         sig = HMAC(key, string_to_sign, hmac_mod)
         sig_b64 = binascii.b2a_base64(sig.digest())[:-1]
-        # print "string_to_sign: ", string_to_sign
-        # print "key: ", key
         # print "sig_b64: ", sig_b64
         return sig_b64
 
@@ -197,8 +198,24 @@ class OAuth_3Leg(OAuth):
             self.get_access_token()
         return self._access_token
 
+    def get_sign_key(self, consumer_secret, oauth_token_secret=None):
+        "gets consumer_secret and oauth_token_secret and turns it into a string suitable for signing"
+        if not oauth_token_secret:
+            key = super(OAuth_3Leg, self).get_sign_key(consumer_secret)
+        else:
+            oauth_token_secret = str(oauth_token_secret) if oauth_token_secret else ''
+            consumer_secret = str(consumer_secret) if consumer_secret else ''
+            # oauth_token_secret has been specified
+            if not consumer_secret:
+                key = str(oauth_token_secret)
+            else:
+                key = "&".join([consumer_secret, oauth_token_secret])
+        return key
+
     def get_oauth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
+        assert self.access_token, "need a valid access token for this step"
+
         params = OrderedDict()
         params["oauth_consumer_key"] = self.consumer_key
         params["oauth_timestamp"] = self.generate_timestamp()
@@ -206,7 +223,11 @@ class OAuth_3Leg(OAuth):
         params["oauth_signature_method"] = self.signature_method
         params["oauth_token"] = self.access_token
 
-        return self.add_params_sign(method, endpoint_url, params)
+        sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
+
+        print "signing with key: %s" % sign_key
+
+        return self.add_params_sign(method, endpoint_url, params, sign_key)
 
     def discover_auth(self):
         """ Discovers the location of authentication resourcers from the API"""
@@ -226,6 +247,8 @@ class OAuth_3Leg(OAuth):
 
     def get_request_token(self):
         """ Uses the request authentication link to get an oauth_token for requesting an access token """
+        assert self.consumer_key, "need a valid consumer_key for this step"
+
         params = OrderedDict()
         params["oauth_consumer_key"] = self.consumer_key
         params["oauth_timestamp"] = self.generate_timestamp()
@@ -268,12 +291,12 @@ class OAuth_3Leg(OAuth):
 
         form_data = OrderedDict()
         for input_soup in form_soup.select('input') + form_soup.select('button'):
-            print "input, class:%5s, id=%5s, name=%5s, value=%s" % (
-                input_soup.get('class'),
-                input_soup.get('id'),
-                input_soup.get('name'),
-                input_soup.get('value')
-            )
+            # print "input, class:%5s, id=%5s, name=%5s, value=%s" % (
+            #     input_soup.get('class'),
+            #     input_soup.get('id'),
+            #     input_soup.get('name'),
+            #     input_soup.get('value')
+            # )
             name = input_soup.get('name')
             if not name:
                 continue
@@ -282,7 +305,7 @@ class OAuth_3Leg(OAuth):
                 form_data[name] = []
             form_data[name].append(value)
 
-        print "form data: %s" % str(form_data)
+        # print "form data: %s" % str(form_data)
         return action, form_data
 
     def get_verifier(self, request_token=None, wp_user=None, wp_pass=None):
@@ -291,6 +314,8 @@ class OAuth_3Leg(OAuth):
 
         if request_token is None:
             request_token = self.request_token
+        assert request_token, "need a valid request_token for this step"
+
         if wp_user is None and self.wp_user:
             wp_user = self.wp_user
         if wp_pass is None and self.wp_pass:
@@ -331,7 +356,7 @@ class OAuth_3Leg(OAuth):
         assert 'log' in login_form_data, 'input for user login did not appear on form'
         assert 'pwd' in login_form_data, 'input for user password did not appear on form'
 
-        print "submitting login form to %s : %s" % (login_form_action, str(login_form_data))
+        # print "submitting login form to %s : %s" % (login_form_action, str(login_form_data))
 
         confirmation_response = authorize_session.post(login_form_action, data=login_form_data, allow_redirects=True)
         try:
@@ -393,6 +418,9 @@ class OAuth_3Leg(OAuth):
 
         if oauth_verifier is None:
             oauth_verifier = self.oauth_verifier
+        assert oauth_verifier, "Need an oauth verifier to perform this step"
+        assert self.request_token, "Need a valid request_token to perform this step"
+
 
         params = OrderedDict()
         params["oauth_consumer_key"] = self.consumer_key
@@ -404,6 +432,7 @@ class OAuth_3Leg(OAuth):
         params["oauth_callback"] = self.callback
 
         sign_key = self.get_sign_key(self.consumer_secret, self.request_token_secret)
+        # sign_key = self.get_sign_key(None, self.request_token_secret)
         # print "request_token_secret:", self.request_token_secret
 
         # print "SIGNING WITH KEY:", repr(sign_key)

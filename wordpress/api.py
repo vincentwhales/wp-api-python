@@ -10,7 +10,7 @@ from requests import request
 from json import dumps as jsonencode
 from wordpress.oauth import OAuth, OAuth_3Leg
 from wordpress.transport import API_Requests_Wrapper
-
+from wordpress.helpers import UrlUtils
 
 class API(object):
     """ API Class """
@@ -89,13 +89,19 @@ class API(object):
         if data is not None:
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
 
-        return self.requester.request(
+        response = self.requester.request(
             method=method,
             url=endpoint_url,
             auth=auth,
             params=params,
             data=data
         )
+
+        assert \
+            response.status_code in [200, 201], "API call returned %s: %s" \
+            % (str(response.status_code), UrlUtils.beautify_response(response))
+
+        return response
 
     def get(self, endpoint):
         """ Get requests """
