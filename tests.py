@@ -493,7 +493,7 @@ class OAuthTestcases(unittest.TestCase):
 
         # TEST WITH LEXEV DATA:
         normalized_params = OAuth.normalize_params(self.lexev_request_params)
-        print "\nLEXEV NORMALIZED PARAMS: ", normalized_params, "\n"
+        # print "\nLEXEV NORMALIZED PARAMS: ", normalized_params, "\n"
 
 
     def test_sort_params(self):
@@ -505,7 +505,7 @@ class OAuthTestcases(unittest.TestCase):
     def test_flatten_params(self):
         # TEST WITH RFC EXAMPLE 1 DATA
         flattened_params = OAuth.flatten_params(self.rfc1_request_params)
-        print flattened_params
+        # print flattened_params
 
         # TEST WITH RFC EXAMPLE 3 DATA
         flattened_params = OAuth.flatten_params(self.rfc3_params_raw)

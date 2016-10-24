@@ -498,14 +498,14 @@ class OAuth_3Leg(OAuth):
             ('oauth_verifier', self.oauth_verifier)
         ]
 
-        params = OrderedDict()
+        # params = OrderedDict()
         # params["oauth_consumer_key"] = self.consumer_key
-        params['oauth_token'] = self.request_token
+        # params['oauth_token'] = self.request_token
         # params["oauth_timestamp"] = self.generate_timestamp()
         # params["oauth_nonce"] = self.generate_nonce()
         # params["oauth_signature_method"] = self.signature_method
-        params['oauth_verifier'] = oauth_verifier
-        params["oauth_callback"] = self.callback
+        # params['oauth_verifier'] = oauth_verifier
+        # params["oauth_callback"] = self.callback
 
         sign_key = self.get_sign_key(self.consumer_secret, self.request_token_secret)
         # sign_key = self.get_sign_key(None, self.request_token_secret)
