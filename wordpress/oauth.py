@@ -34,6 +34,8 @@ from wordpress.helpers import UrlUtils
 
 class OAuth(object):
     oauth_version = '1.0'
+    force_nonce = None
+    force_timestamp = None
 
     """ API Class """
 
@@ -42,6 +44,8 @@ class OAuth(object):
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
         self.signature_method = kwargs.get('signature_method', 'HMAC-SHA1')
+        self.force_timestamp = kwargs.get('force_timestamp')
+        self.force_nonce = kwargs.get('force_nonce')
 
     @property
     def api_version(self):
@@ -51,50 +55,70 @@ class OAuth(object):
     def api_namespace(self):
         return self.requester.api
 
-    def get_sign_key(self, consumer_secret):
+    def get_sign_key(self, consumer_secret, token_secret=None):
         "gets consumer_secret and turns it into a string suitable for signing"
-        consumer_secret = str(consumer_secret) if consumer_secret else ''
+        if not consumer_secret:
+            raise UserWarning("no consumer_secret provided")
+        token_secret = str(token_secret) if token_secret else ''
         if self.api_namespace == 'wc-api' \
         and self.api_version in ["v1", "v2"]:
             # special conditions for wc-api v1-2
             key = consumer_secret
         else:
-            key = "%s&" % consumer_secret
+            key = "%s&%s" % (consumer_secret, token_secret)
         return key
 
-    def add_params_sign(self, method, url, params, key=None):
-        """ Adds the params to a given url, signs the url with key if provided,
-        otherwise generates key automatically and returns a signed url """
+    def add_params_sign(self, method, url, params, sign_key=None):
+        """ Adds the params to a given url, signs the url with sign_key if provided,
+        otherwise generates sign_key automatically and returns a signed url """
+        if isinstance(params, dict):
+            params = params.items()
+
         urlparse_result = urlparse(url)
 
         if urlparse_result.query:
-            for key, value in parse_qsl(urlparse_result.query):
-                params[key] = value
+            params += parse_qsl(urlparse_result.query)
+            # for key, value in parse_qsl(urlparse_result.query):
+            #     params += [(key, value)]
 
-        if "oauth_signature" in params.keys():
-            del params["oauth_signature"]
-        params["oauth_signature"] = self.generate_oauth_signature(method, params, UrlUtils.substitute_query(url), key)
+        params = self.sorted_params(params)
 
-        query_string = urlencode(params)
+        params_without_signature = []
+        for key, value in params:
+            if key != "oauth_signature":
+                params_without_signature.append((key, value))
+
+        signature = self.generate_oauth_signature(method, params_without_signature, url, sign_key)
+        params = params_without_signature + [("oauth_signature", signature)]
+
+        query_string = self.flatten_params(params)
 
         return UrlUtils.substitute_query(url, query_string)
 
+    def get_params(self):
+        return [
+            ("oauth_consumer_key", self.consumer_key),
+            ("oauth_nonce", self.generate_nonce()),
+            ("oauth_signature_method", self.signature_method),
+            ("oauth_timestamp", self.generate_timestamp()),
+        ]
+
     def get_oauth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
-        params = OrderedDict()
-        params["oauth_consumer_key"] = self.consumer_key
-        params["oauth_timestamp"] = self.generate_timestamp()
-        params["oauth_nonce"] = self.generate_nonce()
-        params["oauth_signature_method"] = self.signature_method
+        params = self.get_params()
 
         return self.add_params_sign(method, endpoint_url, params)
+
+    @classmethod
+    def get_signature_base_string(cls, method, params, url):
+        base_request_uri = quote(UrlUtils.substitute_query(url), "")
+        query_string = quote( cls.flatten_params(params), '~')
+        return "&".join([method, base_request_uri, query_string])
 
     def generate_oauth_signature(self, method, params, url, key=None):
         """ Generate OAuth Signature """
 
-        base_request_uri = quote(url, "")
-        query_string = quote( self.normalize_params(params), safe='~')
-        string_to_sign = "&".join([method, base_request_uri, query_string])
+        string_to_sign = self.get_signature_base_string(method, params, url)
 
         if key is None:
             key = self.get_sign_key(self.consumer_secret)
@@ -106,42 +130,69 @@ class OAuth(object):
         else:
             raise UserWarning("Unknown signature_method")
 
-        # print "string_to_sign: ", repr(string_to_sign)
-        # print "key: ", repr(key)
+        # print "\nstring_to_sign: %s" % repr(string_to_sign)
+        # print "\nkey: %s" % repr(key)
         sig = HMAC(key, string_to_sign, hmac_mod)
         sig_b64 = binascii.b2a_base64(sig.digest())[:-1]
-        # print "sig_b64: ", sig_b64
+        # print "\nsig_b64: %s" % sig_b64
         return sig_b64
 
     @classmethod
     def sorted_params(cls, params):
-        ordered = OrderedDict()
-        base_keys = sorted(set(k.split('[')[0] for k in params.keys()))
+        """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+        if isinstance(params, dict):
+            params = params.items()
 
-        for base in base_keys:
-            for key in params.keys():
-                if key == base or key.startswith(base + '['):
-                    ordered[key] = params[key]
+        return sorted(params)
+        # ordered = []
+        # base_keys = sorted(set(k.split('[')[0] for k, v in params))
+        #
+        # for base in base_keys:
+        #     for key, value in params:
+        #         if key == base or key.startswith(base + '['):
+        #             ordered.append((key, value))
 
-        return ordered
+        # return ordered
+
+    @classmethod
+    def normalize_str(cls, string):
+        return quote(string, '')
 
     @classmethod
     def normalize_params(cls, params):
-        """ Normalize parameters """
-        params = cls.sorted_params(params)
-        params = OrderedDict(
-            [(key, UrlUtils.get_value_like_as_php(value)) for key, value in params.items()]
-        )
-        return urlencode(params)
+        """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+        if isinstance(params, dict):
+            params = params.items()
+        params = \
+            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
+                for key, value in params]
 
-    @staticmethod
-    def generate_timestamp():
+        # print "NORMALIZED: %s\n" % str(params.keys())
+        # resposne = urlencode(params)
+        response = params
+        # print "RESPONSE: %s\n" % str(resposne.split('&'))
+        return response
+
+    @classmethod
+    def flatten_params(cls, params):
+        if isinstance(params, dict):
+            params = params.items()
+        params = cls.normalize_params(params)
+        params = cls.sorted_params(params)
+        return "&".join(["%s=%s"%(key, value) for key, value in params])
+
+    @classmethod
+    def generate_timestamp(cls):
         """ Generate timestamp """
+        if cls.force_timestamp is not None:
+            return cls.force_timestamp
         return int(time())
 
-    @staticmethod
-    def generate_nonce():
+    @classmethod
+    def generate_nonce(cls):
         """ Generate nonce number """
+        if cls.force_nonce is not None:
+            return cls.force_nonce
         nonce = ''.join([str(randint(0, 9)) for i in range(8)])
         return HMAC(
             nonce.encode(),
@@ -152,7 +203,7 @@ class OAuth(object):
 class OAuth_3Leg(OAuth):
     """ Provides 3 legged OAuth1a, mostly based off this: http://www.lexev.org/en/2015/oauth-step-step/"""
 
-    oauth_version = '1.0A'
+    # oauth_version = '1.0A'
 
     def __init__(self, requester, consumer_key, consumer_secret, callback, **kwargs):
         super(OAuth_3Leg, self).__init__(requester, consumer_key, consumer_secret, **kwargs)
@@ -198,36 +249,52 @@ class OAuth_3Leg(OAuth):
             self.get_access_token()
         return self._access_token
 
-    def get_sign_key(self, consumer_secret, oauth_token_secret=None):
-        "gets consumer_secret and oauth_token_secret and turns it into a string suitable for signing"
-        if not oauth_token_secret:
-            key = super(OAuth_3Leg, self).get_sign_key(consumer_secret)
-        else:
-            oauth_token_secret = str(oauth_token_secret) if oauth_token_secret else ''
-            consumer_secret = str(consumer_secret) if consumer_secret else ''
-            # oauth_token_secret has been specified
-            if not consumer_secret:
-                key = str(oauth_token_secret)
-            else:
-                key = "&".join([consumer_secret, oauth_token_secret])
-        return key
+    # def get_sign_key(self, consumer_secret, oauth_token_secret=None):
+    #     "gets consumer_secret and oauth_token_secret and turns it into a string suitable for signing"
+    #     if not oauth_token_secret:
+    #         key = super(OAuth_3Leg, self).get_sign_key(consumer_secret)
+    #     else:
+    #         oauth_token_secret = str(oauth_token_secret) if oauth_token_secret else ''
+    #         consumer_secret = str(consumer_secret) if consumer_secret else ''
+    #         # oauth_token_secret has been specified
+    #         if not consumer_secret:
+    #             key = str(oauth_token_secret)
+    #         else:
+    #             key = "&".join([consumer_secret, oauth_token_secret])
+    #     return key
 
     def get_oauth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
         assert self.access_token, "need a valid access token for this step"
 
-        params = OrderedDict()
-        params["oauth_consumer_key"] = self.consumer_key
-        params["oauth_timestamp"] = self.generate_timestamp()
-        params["oauth_nonce"] = self.generate_nonce()
-        params["oauth_signature_method"] = self.signature_method
-        params["oauth_token"] = self.access_token
+        params = self.get_params()
+        params += [
+            ('oauth_callback', self.callback),
+            ('oauth_token', self.access_token)
+        ]
 
         sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
 
-        print "signing with key: %s" % sign_key
-
         return self.add_params_sign(method, endpoint_url, params, sign_key)
+
+        # params = OrderedDict()
+        # params["oauth_consumer_key"] = self.consumer_key
+        # params["oauth_timestamp"] = self.generate_timestamp()
+        # params["oauth_nonce"] = self.generate_nonce()
+        # params["oauth_signature_method"] = self.signature_method
+        # params["oauth_token"] = self.access_token
+        #
+        # sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
+        #
+        # print "signing with key: %s" % sign_key
+        #
+        # return self.add_params_sign(method, endpoint_url, params, sign_key)
+
+    # def get_params(self, get_access_token=False):
+    #     params = super(OAuth_3Leg, self).get_params()
+    #     if get_access_token:
+    #         params.append(('oauth_token', self.access_token))
+    #     return params
 
     def discover_auth(self):
         """ Discovers the location of authentication resourcers from the API"""
@@ -249,12 +316,16 @@ class OAuth_3Leg(OAuth):
         """ Uses the request authentication link to get an oauth_token for requesting an access token """
         assert self.consumer_key, "need a valid consumer_key for this step"
 
-        params = OrderedDict()
-        params["oauth_consumer_key"] = self.consumer_key
-        params["oauth_timestamp"] = self.generate_timestamp()
-        params["oauth_nonce"] = self.generate_nonce()
-        params["oauth_signature_method"] = self.signature_method
-        params["oauth_callback"] = self.callback
+        params = self.get_params()
+        params += [
+            ('oauth_callback', self.callback)
+        ]
+        # params = OrderedDict()
+        # params["oauth_consumer_key"] = self.consumer_key
+        # params["oauth_timestamp"] = self.generate_timestamp()
+        # params["oauth_nonce"] = self.generate_nonce()
+        # params["oauth_signature_method"] = self.signature_method
+        # params["oauth_callback"] = self.callback
         # params["oauth_version"] = self.oauth_version
 
         request_token_url = self.authentication['oauth1']['request']
@@ -421,13 +492,18 @@ class OAuth_3Leg(OAuth):
         assert oauth_verifier, "Need an oauth verifier to perform this step"
         assert self.request_token, "Need a valid request_token to perform this step"
 
+        params = self.get_params()
+        params += [
+            ('oauth_token', self.request_token),
+            ('oauth_verifier', self.oauth_verifier)
+        ]
 
         params = OrderedDict()
-        params["oauth_consumer_key"] = self.consumer_key
+        # params["oauth_consumer_key"] = self.consumer_key
         params['oauth_token'] = self.request_token
-        params["oauth_timestamp"] = self.generate_timestamp()
-        params["oauth_nonce"] = self.generate_nonce()
-        params["oauth_signature_method"] = self.signature_method
+        # params["oauth_timestamp"] = self.generate_timestamp()
+        # params["oauth_nonce"] = self.generate_nonce()
+        # params["oauth_signature_method"] = self.signature_method
         params['oauth_verifier'] = oauth_verifier
         params["oauth_callback"] = self.callback
 

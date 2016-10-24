@@ -11,6 +11,13 @@ from wordpress.transport import API_Requests_Wrapper
 from wordpress.api import API
 from wordpress.oauth import OAuth
 
+try:
+    from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
+    from urllib.parse import ParseResult as URLParseResult
+except ImportError:
+    from urllib import urlencode, quote, unquote
+    from urlparse import parse_qs, parse_qsl, urlparse, urlunparse
+    from urlparse import ParseResult as URLParseResult
 
 class WordpressTestCase(unittest.TestCase):
     """Test case for the client methods."""
@@ -135,6 +142,7 @@ class WordpressTestCase(unittest.TestCase):
             status = self.api.delete("products").status_code
         self.assertEqual(status, 200)
 
+    @unittest.skip("going by RRC 5849 sorting instead")
     def test_oauth_sorted_params(self):
         """ Test order of parameters for OAuth signature """
         def check_sorted(keys, expected):
@@ -282,6 +290,7 @@ class TransportTestcases(unittest.TestCase):
         self.assertEqual(response.request.url, 'https://woo.test:8888/wp-json/wp/v2/posts')
 
 class OAuthTestcases(unittest.TestCase):
+
     def setUp(self):
         self.base_url = "http://localhost:8888/wordpress/"
         self.api_name = 'wc-api'
@@ -300,6 +309,149 @@ class OAuthTestcases(unittest.TestCase):
             signature_method=self.signature_method
         )
 
+        # RFC EXAMPLE 1 DATA: https://tools.ietf.org/html/draft-hammer-oauth-10#section-1.2
+
+        self.rfc1_api_url = 'https://photos.example.net/'
+        self.rfc1_consumer_key = 'dpf43f3p2l4k3l03'
+        self.rfc1_consumer_secret = 'kd94hf93k423kf44'
+        self.rfc1_oauth_token = 'hh5s93j4hdidpola'
+        self.rfc1_signature_method = 'HMAC-SHA1'
+        self.rfc1_callback = 'http://printer.example.com/ready'
+        self.rfc1_api = API(
+            url=self.rfc1_api_url,
+            consumer_key=self.rfc1_consumer_key,
+            consumer_secret=self.rfc1_consumer_secret,
+            api='',
+            version='',
+            callback=self.rfc1_callback,
+            wp_user='',
+            wp_pass='',
+            oauth1a_3leg=True
+        )
+        self.rfc1_request_method = 'POST'
+        self.rfc1_request_target_url = 'https://photos.example.net/initiate'
+        self.rfc1_request_timestamp = '137131200'
+        self.rfc1_request_nonce = 'wIjqoS'
+        self.rfc1_request_params = [
+            ('oauth_consumer_key', self.rfc1_consumer_key),
+            ('oauth_signature_method', self.rfc1_signature_method),
+            ('oauth_timestamp', self.rfc1_request_timestamp),
+            ('oauth_nonce', self.rfc1_request_nonce),
+            ('oauth_callback', self.rfc1_callback),
+        ]
+        self.rfc1_request_signature = '74KNZJeDHnMBp0EMJ9ZHt/XKycU='
+
+
+        # RFC EXAMPLE 3 DATA: https://tools.ietf.org/html/draft-hammer-oauth-10#section-3.4.1
+        self.rfc3_method = "GET"
+        self.rfc3_target_url = 'http://example.com/request'
+        self.rfc3_params_raw = [
+            ('b5', r"=%3D"),
+            ('a3', "a"),
+            ('c@', ""),
+            ('a2', 'r b'),
+            ('oauth_consumer_key', '9djdj82h48djs9d2'),
+            ('oauth_token', 'kkk9d7dh3k39sjv7'),
+            ('oauth_signature_method', 'HMAC-SHA1'),
+            ('oauth_timestamp', 137131201),
+            ('oauth_nonce', '7d8f3e4a'),
+            ('c2', ''),
+            ('a3', '2 q')
+        ]
+        self.rfc3_params_encoded = [
+            ('b5', r"%3D%253D"),
+            ('a3', "a"),
+            ('c%40', ""),
+            ('a2', r"r%20b"),
+            ('oauth_consumer_key', '9djdj82h48djs9d2'),
+            ('oauth_token', 'kkk9d7dh3k39sjv7'),
+            ('oauth_signature_method', 'HMAC-SHA1'),
+            ('oauth_timestamp', '137131201'),
+            ('oauth_nonce', '7d8f3e4a'),
+            ('c2', ''),
+            ('a3', r"2%20q")
+        ]
+        self.rfc3_params_sorted = [
+            ('a2', r"r%20b"),
+            ('a3', r"2%20q"),
+            ('a3', "a"),
+            ('b5', r"%3D%253D"),
+            ('c%40', ""),
+            ('c2', ''),
+            ('oauth_consumer_key', '9djdj82h48djs9d2'),
+            ('oauth_nonce', '7d8f3e4a'),
+            ('oauth_signature_method', 'HMAC-SHA1'),
+            ('oauth_timestamp', '137131201'),
+            ('oauth_token', 'kkk9d7dh3k39sjv7'),
+        ]
+        self.rfc3_param_string = r"a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7"
+        self.rfc3_base_string = r"GET&http%3A%2F%2Fexample.com%2Frequest&a2%3Dr%2520b%26a3%3D2%2520q%26a3%3Da%26b5%3D%253D%25253D%26c%2540%3D%26c2%3D%26oauth_consumer_key%3D9djdj82h48djs9d2%26oauth_nonce%3D7d8f3e4a%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D137131201%26oauth_token%3Dkkk9d7dh3k39sjv7"
+
+        # test data taken from : https://dev.twitter.com/oauth/overview/creating-signatures
+
+        self.twitter_api_url = "https://api.twitter.com/"
+        self.twitter_consumer_secret = "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw"
+        self.twitter_consumer_key = "xvz1evFS4wEEPTGEFPHBog"
+        self.twitter_signature_method = "HMAC-SHA1"
+        self.twitter_api = API(
+            url=self.twitter_api_url,
+            consumer_key=self.twitter_consumer_key,
+            consumer_secret=self.twitter_consumer_secret,
+            api='',
+            version='1',
+            signature_method=self.twitter_signature_method,
+        )
+
+        self.twitter_method = "POST"
+        self.twitter_target_url = "https://api.twitter.com/1/statuses/update.json?include_entities=true"
+        self.twitter_params_raw = [
+            ("status", "Hello Ladies + Gentlemen, a signed OAuth request!"),
+            ("include_entities", "true"),
+            ("oauth_consumer_key", self.twitter_consumer_key),
+            ("oauth_nonce", "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg"),
+            ("oauth_signature_method", self.twitter_signature_method),
+            ("oauth_timestamp", "1318622958"),
+            ("oauth_token", "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb"),
+            ("oauth_version", "1.0"),
+        ]
+        self.twitter_param_string = r"include_entities=true&oauth_consumer_key=xvz1evFS4wEEPTGEFPHBog&oauth_nonce=kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1318622958&oauth_token=370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb&oauth_version=1.0&status=Hello%20Ladies%20%2B%20Gentlemen%2C%20a%20signed%20OAuth%20request%21"
+        self.twitter_signature_base_string = r"POST&https%3A%2F%2Fapi.twitter.com%2F1%2Fstatuses%2Fupdate.json&include_entities%3Dtrue%26oauth_consumer_key%3Dxvz1evFS4wEEPTGEFPHBog%26oauth_nonce%3DkYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958%26oauth_token%3D370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb%26oauth_version%3D1.0%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen%252C%2520a%2520signed%2520OAuth%2520request%2521"
+        self.twitter_token_secret = 'LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE'
+        self.twitter_signing_key = 'kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw&LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE'
+        self.twitter_oauth_signature = 'tnnArxj06cWHq44gCs1OSKk/jLY='
+
+        self.lexev_consumer_key='your_app_key'
+        self.lexev_consumer_secret='your_app_secret'
+        self.lexev_callback='http://127.0.0.1/oauth1_callback'
+        self.lexev_signature_method='HMAC-SHA1'
+        self.lexev_version='1.0'
+        self.lexev_api = API(
+            url='https://bitbucket.org/',
+            api='api',
+            version='1.0',
+            consumer_key=self.lexev_consumer_key,
+            consumer_secret=self.lexev_consumer_secret,
+            signature_method=self.lexev_signature_method,
+            callback=self.lexev_callback,
+            wp_user='',
+            wp_pass='',
+            oauth1a_3leg=True
+        )
+        self.lexev_request_method='POST'
+        self.lexev_request_url='https://bitbucket.org/api/1.0/oauth/request_token'
+        self.lexev_request_nonce='27718007815082439851427366369'
+        self.lexev_request_timestamp='1427366369'
+        self.lexev_request_params=[
+               ('oauth_callback',self.lexev_callback),
+               ('oauth_consumer_key',self.lexev_consumer_key),
+               ('oauth_nonce',self.lexev_request_nonce),
+               ('oauth_signature_method',self.lexev_signature_method),
+               ('oauth_timestamp',self.lexev_request_timestamp),
+               ('oauth_version',self.lexev_version),
+        ]
+        self.lexev_request_signature=r"iPdHNIu4NGOjuXZ+YCdPWaRwvJY="
+        self.lexev_resource_url='https://api.bitbucket.org/1.0/repositories/st4lk/django-articles-transmeta/branches'
+
     # def test_get_sign(self):
     #     message = "POST&http%3A%2F%2Flocalhost%3A8888%2Fwordpress%2Foauth1%2Frequest&oauth_callback%3Dlocalhost%253A8888%252Fwordpress%26oauth_consumer_key%3DLCLwTOfxoXGh%26oauth_nonce%3D85285179173071287531477036693%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1477036693%26oauth_version%3D1.0"
     #     signature_method = 'HMAC-SHA1'
@@ -314,16 +466,127 @@ class OAuthTestcases(unittest.TestCase):
             "%s&" % self.consumer_secret
         )
 
+        self.assertEqual(
+            self.wcapi.oauth.get_sign_key(self.twitter_consumer_secret, self.twitter_token_secret),
+            self.twitter_signing_key
+        )
 
+    # @unittest.skip("changed order of parms to fit wordpress api")
     def test_normalize_params(self):
-        params = dict([('oauth_callback', 'localhost:8888/wordpress'), ('oauth_consumer_key', 'LCLwTOfxoXGh'), ('oauth_nonce', '45474014077032100721477037582'), ('oauth_signature_method', 'HMAC-SHA1'), ('oauth_timestamp', 1477037582), ('oauth_version', '1.0')])
-        expected_normalized_params = "oauth_callback=localhost%3A8888%2Fwordpress&oauth_consumer_key=LCLwTOfxoXGh&oauth_nonce=45474014077032100721477037582&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1477037582&oauth_version=1.0"
-        normalized_params = OAuth.normalize_params(params)
-        self.assertEqual(expected_normalized_params, normalized_params)
+        # params = dict([('oauth_callback', 'localhost:8888/wordpress'), ('oauth_consumer_key', 'LCLwTOfxoXGh'), ('oauth_nonce', '45474014077032100721477037582'), ('oauth_signature_method', 'HMAC-SHA1'), ('oauth_timestamp', 1477037582), ('oauth_version', '1.0')])
+        # expected_normalized_params = "oauth_callback=localhost%3A8888%2Fwordpress&oauth_consumer_key=LCLwTOfxoXGh&oauth_nonce=45474014077032100721477037582&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1477037582&oauth_version=1.0"
+        # normalized_params = OAuth.normalize_params(params)
+        # self.assertEqual(expected_normalized_params, normalized_params)
 
+        # TEST WITH RFC EXAMPLE 1 DATA
+        normalized_params = OAuth.normalize_params(self.rfc1_request_params)
+        # print "\nRFC1 NORMALIZED PARAMS: ", normalized_params, "\n"
+
+        # TEST WITH RFC EXAMPLE 3 DATA
+        normalized_params = OAuth.normalize_params(self.rfc3_params_raw)
+        expected_normalized_params = self.rfc3_params_encoded
+        # print "\nn: %s\ne: %s" % (normalized_params, expected_normalized_params)
+        self.assertEqual(len(normalized_params), len(expected_normalized_params))
+        for i in range(len(normalized_params)):
+            self.assertEqual(normalized_params[i], expected_normalized_params[i])
+        self.assertEqual(normalized_params, expected_normalized_params)
+
+        # TEST WITH LEXEV DATA:
+        normalized_params = OAuth.normalize_params(self.lexev_request_params)
+        print "\nLEXEV NORMALIZED PARAMS: ", normalized_params, "\n"
+
+
+    def test_sort_params(self):
+        # TEST WITH RFC EXAMPLE 3 DATA
+        sorted_params = OAuth.sorted_params(self.rfc3_params_encoded)
+        expected_sorted_params = self.rfc3_params_sorted
+        self.assertEqual(sorted_params, expected_sorted_params)
+
+    def test_flatten_params(self):
+        # TEST WITH RFC EXAMPLE 1 DATA
+        flattened_params = OAuth.flatten_params(self.rfc1_request_params)
+        print flattened_params
+
+        # TEST WITH RFC EXAMPLE 3 DATA
+        flattened_params = OAuth.flatten_params(self.rfc3_params_raw)
+        expected_flattened_params = self.rfc3_param_string
+        # print "\nn: %s\ne: %s" % (flattened_params, expected_flattened_params)
+        self.assertEqual(flattened_params, expected_flattened_params)
+
+        # TEST WITH TWITTER DATA
+        flattened_params = OAuth.flatten_params(self.twitter_params_raw)
+        expected_flattened_params = self.twitter_param_string
+        # print "\nn: %s\ne: %s" % (flattened_params, expected_flattened_params)
+        self.assertEqual(flattened_params, expected_flattened_params)
+
+    def test_get_signature_base_string(self):
+        # TEST WITH RFC EXAMPLE 3 DATA
+        rfc3_base_string = OAuth.get_signature_base_string(
+            self.rfc3_method,
+            self.rfc3_params_raw,
+            self.rfc3_target_url
+        )
+        self.assertEqual(rfc3_base_string, self.rfc3_base_string)
+
+        # TEST WITH TWITTER DATA
+        twitter_base_string = OAuth.get_signature_base_string(
+            self.twitter_method,
+            self.twitter_params_raw,
+            self.twitter_target_url
+        )
+        self.assertEqual(twitter_base_string, self.twitter_signature_base_string)
+
+    # @unittest.skip("changed order of parms to fit wordpress api")
     def test_generate_oauth_signature(self):
 
-        endpoint_url = UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, self.endpoint])
+        # endpoint_url = UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, self.endpoint])
+        #
+        # params = OrderedDict()
+        # params["oauth_consumer_key"] = self.consumer_key
+        # params["oauth_timestamp"] = "1477041328"
+        # params["oauth_nonce"] = "166182658461433445531477041328"
+        # params["oauth_signature_method"] = self.signature_method
+        # params["oauth_version"] = "1.0"
+        # params["oauth_callback"] = 'localhost:8888/wordpress'
+        #
+        # sig = self.wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
+        # expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
+        # self.assertEqual(sig, expected_sig)
+
+        # TEST WITH RFC EXAMPLE 1 DATA
+
+        rfc1_request_signature = self.rfc1_api.oauth.generate_oauth_signature(
+            self.rfc1_request_method,
+            self.rfc1_request_params,
+            self.rfc1_request_target_url,
+            '%s&' % self.rfc1_consumer_secret
+        )
+        self.assertEqual(rfc1_request_signature, self.rfc1_request_signature)
+
+        # TEST WITH RFC EXAMPLE 3 DATA
+
+        # TEST WITH TWITTER DATA
+
+        twitter_signature = self.twitter_api.oauth.generate_oauth_signature(
+            self.twitter_method,
+            self.twitter_params_raw,
+            self.twitter_target_url,
+            self.twitter_signing_key
+        )
+        self.assertEqual(twitter_signature, self.twitter_oauth_signature)
+
+        # TEST WITH LEXEV DATA
+
+        lexev_request_signature = self.lexev_api.oauth.generate_oauth_signature(
+            method=self.lexev_request_method,
+            params=self.lexev_request_params,
+            url=self.lexev_request_url
+        )
+        self.assertEqual(lexev_request_signature, self.lexev_request_signature)
+
+
+    def test_add_params_sign(self):
+        endpoint_url = self.wcapi.requester.endpoint_url('products?page=2')
 
         params = OrderedDict()
         params["oauth_consumer_key"] = self.consumer_key
@@ -333,9 +596,20 @@ class OAuthTestcases(unittest.TestCase):
         params["oauth_version"] = "1.0"
         params["oauth_callback"] = 'localhost:8888/wordpress'
 
-        sig = self.wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
-        expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
-        self.assertEqual(sig, expected_sig)
+        signed_url = self.wcapi.oauth.add_params_sign("GET", endpoint_url, params)
+
+        signed_url_params = parse_qsl(urlparse(signed_url).query)
+        # print signed_url_params
+        # self.assertEqual('page', signed_url_params[-1][0])
+        self.assertIn('page', dict(signed_url_params))
+
+    # def test_get_oauth_url(self):
+    #     request_oauth_url = self.rfc1_api.oauth.get_oauth_url(self.rfc1_request_target_url, self.rfc1_request_method)
+    #     print request_oauth_url
+
+    # def test_normalize_params(self):
+
+
 
     # def generate_oauth_signature(self):
     #     base_url = "http://localhost:8888/wordpress/"
@@ -429,13 +703,6 @@ class OAuth3LegTestcases(unittest.TestCase):
         )
         self.assertEqual(type(key), type(""))
 
-        key = self.api.oauth.get_sign_key(None, oauth_token_secret)
-        self.assertEqual(
-            key,
-            oauth_token_secret
-        )
-        self.assertEqual(type(key), type(""))
-        
 
     def test_auth_discovery(self):
 

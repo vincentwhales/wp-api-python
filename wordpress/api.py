@@ -23,6 +23,8 @@ class API(object):
             requester=self.requester,
             consumer_key=consumer_key,
             consumer_secret=consumer_secret,
+            force_nonce=kwargs.get('force_nonce'),
+            force_timestamp=kwargs.get('force_timestamp')
         )
 
         if kwargs.get('oauth1a_3leg'):
@@ -33,6 +35,10 @@ class API(object):
             self.oauth = OAuth_3Leg( **oauth_kwargs )
         else:
             self.oauth = OAuth( **oauth_kwargs )
+
+    @property
+    def url(self):
+        return self.requester.url
 
     @property
     def timeout(self):
@@ -98,8 +104,12 @@ class API(object):
         )
 
         assert \
-            response.status_code in [200, 201], "API call returned %s: %s" \
-            % (str(response.status_code), UrlUtils.beautify_response(response))
+            response.status_code in [200, 201], "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
+                response.request.url,
+                str(response.status_code),
+                UrlUtils.beautify_response(response),
+                str(response.headers)
+            )
 
         return response
 
