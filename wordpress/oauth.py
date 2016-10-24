@@ -140,19 +140,22 @@ class OAuth(object):
     @classmethod
     def sorted_params(cls, params):
         """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+
         if isinstance(params, dict):
             params = params.items()
 
-        return sorted(params)
-        # ordered = []
-        # base_keys = sorted(set(k.split('[')[0] for k, v in params))
-        #
-        # for base in base_keys:
-        #     for key, value in params:
-        #         if key == base or key.startswith(base + '['):
-        #             ordered.append((key, value))
+        # return sorted(params)
+        ordered = []
+        base_keys = sorted(set(k.split('[')[0] for k, v in params))
+        keys_seen = []
+        for base in base_keys:
+            for key, value in params:
+                if key == base or key.startswith(base + '['):
+                    if key not in keys_seen:
+                        ordered.append((key, value))
+                        keys_seen.append(key)
 
-        # return ordered
+        return ordered
 
     @classmethod
     def normalize_str(cls, string):
