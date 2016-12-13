@@ -209,7 +209,15 @@ Example of returned data:
 Changelog
 ---------
 
+1.2.1 - 2016/12/13
+~~~~~~~~~~~~~~~~~~
+- tested to handle complex queries like filter[limit]
+- fix: Some edge cases where queries were out of order causing signature mismatch
+- hardened helper and api classes and added corresponding test cases
+
 1.2.0 - 2016/09/28
 ~~~~~~~~~~~~~~~~~~
 
 - Initial fork
+- Implemented 3-legged OAuth
+- Tested with pagination
