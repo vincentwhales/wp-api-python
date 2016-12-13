@@ -12,21 +12,31 @@ Roadmap
 -------
 
 - [x] Create initial fork
-- [ ] Implement 3-legged OAuth on Wordpress client
+- [x] Implement 3-legged OAuth on Wordpress client
 - [ ] Implement iterator for convent access to API items
 
 Requirements
 ------------
 
-Your site should have the following plugins installed on your wordpress site:
+You should have the following plugins installed on your wordpress site:
 
 - **WP REST API** (recommended version: 2.0+)
 - **WP REST API - OAuth 1.0a Server** (https://github.com/WP-API/OAuth1)
 - **WP REST API - Meta Endpoints** (optional)
 
+The following python packages are also used by the package
+
+- **requests**
+- **beautifulsoup**
 
 Installation
 ------------
+
+Install with pip
+
+.. code-block:: bash
+
+    pip install wordpress-api
 
 Download this repo and use setuptools to install the package
 
@@ -35,6 +45,15 @@ Download this repo and use setuptools to install the package
     pip install setuptools
     git clone https://github.com/derwentx/wp-api-python
     python setup.py install
+
+Testing
+-------
+
+If you have installed from source, then you can test with unittest:
+
+.. code-block:: bash
+
+    python -m unittest -v tests
 
 Getting started
 ---------------
@@ -57,7 +76,9 @@ Setup for the old Wordpress API:
         consumer_key="XXXXXXXXXXXX",
         consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         api="wp-json",
-        version=None
+        version=None,
+        wp_user="XXXX",
+        wp_pass="XXXX"
     )
 
 Setup for the new WP REST API v2:
@@ -71,7 +92,9 @@ Setup for the new WP REST API v2:
         consumer_key="XXXXXXXXXXXX",
         consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         api="wp-json",
-        version="wp/v2"
+        version="wp/v2",
+        wp_user="XXXX",
+        wp_pass="XXXX"
     )
 
 Setup for the old WooCommerce API v3:

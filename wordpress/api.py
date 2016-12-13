@@ -79,16 +79,17 @@ class API(object):
     def __request(self, method, endpoint, data):
         """ Do requests """
         endpoint_url = self.requester.endpoint_url(endpoint)
+        # endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
+        endpoint_params = {}
         auth = None
-        params = {}
 
         if self.requester.is_ssl is True and self.requester.query_string_auth is False:
             auth = (self.oauth.consumer_key, self.oauth.consumer_secret)
         elif self.requester.is_ssl is True and self.requester.query_string_auth is True:
-            params = {
+            endpoint_params.update({
                 "consumer_key": self.oauth.consumer_key,
                 "consumer_secret": self.oauth.consumer_secret
-            }
+            })
         else:
             endpoint_url = self.oauth.get_oauth_url(endpoint_url, method)
 
@@ -99,7 +100,7 @@ class API(object):
             method=method,
             url=endpoint_url,
             auth=auth,
-            params=params,
+            params=endpoint_params,
             data=data
         )
 

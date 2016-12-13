@@ -1,5 +1,9 @@
 """ API Tests """
 import unittest
+import sys
+import pdb
+import functools
+import traceback
 from httmock import all_requests, HTTMock, urlmatch
 from collections import OrderedDict
 
@@ -10,6 +14,7 @@ from wordpress.helpers import UrlUtils, SeqUtils, StrUtils
 from wordpress.transport import API_Requests_Wrapper
 from wordpress.api import API
 from wordpress.oauth import OAuth
+import random
 
 try:
     from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
@@ -18,6 +23,21 @@ except ImportError:
     from urllib import urlencode, quote, unquote
     from urlparse import parse_qs, parse_qsl, urlparse, urlunparse
     from urlparse import ParseResult as URLParseResult
+
+def debug_on(*exceptions):
+    if not exceptions:
+        exceptions = (AssertionError, )
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except exceptions:
+                info = sys.exc_info()
+                traceback.print_exception(*info) 
+                pdb.post_mortem(info[2])
+        return wrapper
+    return decorator
 
 class WordpressTestCase(unittest.TestCase):
     """Test case for the client methods."""
@@ -162,6 +182,10 @@ class WordpressTestCase(unittest.TestCase):
         check_sorted(['a1', 'b[c]', 'b[a]', 'b[b]', 'a2'], ['a1', 'a2', 'b[c]', 'b[a]', 'b[b]'])
 
 class HelperTestcase(unittest.TestCase):
+    def setUp(self):
+        self.test_url = "http://ich.local:8888/woocommerce/wc-api/v3/products?filter%5Blimit%5D=2&oauth_consumer_key=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&oauth_nonce=c4f2920b0213c43f2e8d3d3333168ec4a22222d1&oauth_signature=3ibOjMuhj6JGnI43BQZGniigHh8%3D&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1481601370&page=2"
+
+
     def test_url_is_ssl(self):
         self.assertTrue(UrlUtils.is_ssl("https://woo.test:8888"))
         self.assertFalse(UrlUtils.is_ssl("http://woo.test:8888"))
@@ -232,6 +256,42 @@ class HelperTestcase(unittest.TestCase):
             UrlUtils.get_value_like_as_php(1.1)
         )
 
+    def test_url_get_query_dict_singular(self):
+        result = UrlUtils.get_query_dict_singular(self.test_url)
+        self.assertEquals(
+            result,
+            {
+                'filter[limit]': '2', 
+                'oauth_nonce': 'c4f2920b0213c43f2e8d3d3333168ec4a22222d1', 
+                'oauth_timestamp': '1481601370', 
+                'oauth_consumer_key': 'ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 
+                'oauth_signature_method': 'HMAC-SHA1', 
+                'oauth_signature': '3ibOjMuhj6JGnI43BQZGniigHh8=', 
+                'page': '2'
+            }
+        )
+
+    def test_url_get_query_singular(self):
+        result = UrlUtils.get_query_singular(self.test_url, 'oauth_consumer_key')
+        self.assertEqual(
+            result,
+            'ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        )
+        result = UrlUtils.get_query_singular(self.test_url, 'filter[limit]')
+        self.assertEqual(
+            str(result),
+            str(2)
+        )
+
+    def test_url_set_query_singular(self):
+        result = UrlUtils.set_query_singular(self.test_url, 'filter[limit]', 3)
+        expected = "http://ich.local:8888/woocommerce/wc-api/v3/products?filter%5Blimit%5D=3&oauth_consumer_key=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&oauth_nonce=c4f2920b0213c43f2e8d3d3333168ec4a22222d1&oauth_signature=3ibOjMuhj6JGnI43BQZGniigHh8%3D&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1481601370&page=2"
+        self.assertEqual(result, expected)
+
+    def test_url_del_query_singular(self):
+        result = UrlUtils.del_query_singular(self.test_url, 'filter[limit]')
+        expected = "http://ich.local:8888/woocommerce/wc-api/v3/products?oauth_consumer_key=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&oauth_nonce=c4f2920b0213c43f2e8d3d3333168ec4a22222d1&oauth_signature=3ibOjMuhj6JGnI43BQZGniigHh8%3D&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1481601370&page=2"
+        self.assertEqual(result, expected)
 
     def test_seq_filter_true(self):
         self.assertEquals(
@@ -472,64 +532,11 @@ class OAuthTestcases(unittest.TestCase):
             self.twitter_signing_key
         )
 
-    # @unittest.skip("changed order of parms to fit wordpress api")
-    # def test_normalize_params(self):
-        # params = dict([('oauth_callback', 'localhost:8888/wordpress'), ('oauth_consumer_key', 'LCLwTOfxoXGh'), ('oauth_nonce', '45474014077032100721477037582'), ('oauth_signature_method', 'HMAC-SHA1'), ('oauth_timestamp', 1477037582), ('oauth_version', '1.0')])
-        # expected_normalized_params = "oauth_callback=localhost%3A8888%2Fwordpress&oauth_consumer_key=LCLwTOfxoXGh&oauth_nonce=45474014077032100721477037582&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1477037582&oauth_version=1.0"
-        # normalized_params = OAuth.normalize_params(params)
-        # self.assertEqual(expected_normalized_params, normalized_params)
-
-        # TEST WITH RFC EXAMPLE 1 DATA
-        # normalized_params = OAuth.normalize_params(self.rfc1_request_params)
-        # print "\nRFC1 NORMALIZED PARAMS: ", normalized_params, "\n"
-
-        # TEST WITH RFC EXAMPLE 3 DATA
-        # normalized_params = OAuth.normalize_params(self.rfc3_params_raw)
-        # expected_normalized_params = self.rfc3_params_encoded
-        # # print "\nn: %s\ne: %s" % (normalized_params, expected_normalized_params)
-        # self.assertEqual(len(normalized_params), len(expected_normalized_params))
-        # for i in range(len(normalized_params)):
-        #     self.assertEqual(normalized_params[i], expected_normalized_params[i])
-        # self.assertEqual(normalized_params, expected_normalized_params)
-
-        # TEST WITH LEXEV DATA:
-        # normalized_params = OAuth.normalize_params(self.lexev_request_params)
-        # print "\nLEXEV NORMALIZED PARAMS: ", normalized_params, "\n"
-
-
-    # def test_sort_params(self):
-    #     # TEST WITH RFC EXAMPLE 3 DATA
-    #     sorted_params = OAuth.sorted_params(self.rfc3_params_encoded)
-    #     expected_sorted_params = self.rfc3_params_sorted
-    #     self.assertEqual(sorted_params, expected_sorted_params)
-
     def test_flatten_params(self):
-        # # TEST WITH RFC EXAMPLE 1 DATA
-        # flattened_params = OAuth.flatten_params(self.rfc1_request_params)
-        # # print flattened_params
-
-        # # TEST WITH RFC EXAMPLE 3 DATA
-        # flattened_params = OAuth.flatten_params(self.rfc3_params_raw)
-        # expected_flattened_params = self.rfc3_param_string
-        # # print "\nn: %s\ne: %s" % (flattened_params, expected_flattened_params)
-        # self.assertEqual(flattened_params, expected_flattened_params)
-
-        # TEST WITH TWITTER DATA
         flattened_params = OAuth.flatten_params(self.twitter_params_raw)
         expected_flattened_params = self.twitter_param_string
-        # print "\nn: %s\ne: %s" % (flattened_params, expected_flattened_params)
         self.assertEqual(flattened_params, expected_flattened_params)
 
-    # def test_get_signature_base_string(self):
-    #     # TEST WITH RFC EXAMPLE 3 DATA
-    #     rfc3_base_string = OAuth.get_signature_base_string(
-    #         self.rfc3_method,
-    #         self.rfc3_params_raw,
-    #         self.rfc3_target_url
-    #     )
-    #     self.assertEqual(rfc3_base_string, self.rfc3_base_string)
-
-        # TEST WITH TWITTER DATA
         twitter_base_string = OAuth.get_signature_base_string(
             self.twitter_method,
             self.twitter_params_raw,
@@ -600,49 +607,8 @@ class OAuthTestcases(unittest.TestCase):
         signed_url = self.wcapi.oauth.add_params_sign("GET", endpoint_url, params)
 
         signed_url_params = parse_qsl(urlparse(signed_url).query)
-        # print signed_url_params
         # self.assertEqual('page', signed_url_params[-1][0])
         self.assertIn('page', dict(signed_url_params))
-
-    # def test_get_oauth_url(self):
-    #     request_oauth_url = self.rfc1_api.oauth.get_oauth_url(self.rfc1_request_target_url, self.rfc1_request_method)
-    #     print request_oauth_url
-
-    # def test_normalize_params(self):
-
-
-
-    # def generate_oauth_signature(self):
-    #     base_url = "http://localhost:8888/wordpress/"
-    #     api_name = 'wc-api'
-    #     api_ver = 'v3'
-    #     endpoint = 'products/99'
-    #     signature_method = "HAMC-SHA1"
-    #     consumer_key = "ck_681c2be361e415519dce4b65ee981682cda78bc6"
-    #     consumer_secret = "cs_b11f652c39a0afd3752fc7bb0c56d60d58da5877"
-    #
-    #     wcapi = API(
-    #         url=base_url,
-    #         consumer_key=consumer_key,
-    #         consumer_secret=consumer_secret,
-    #         api=api_name,
-    #         version=api_ver,
-    #         signature_method=signature_method
-    #     )
-    #
-    #     endpoint_url = UrlUtils.join_components([base_url, api_name, api_ver, endpoint])
-    #
-    #     params = OrderedDict()
-    #     params["oauth_consumer_key"] = consumer_key
-    #     params["oauth_timestamp"] = "1477041328"
-    #     params["oauth_nonce"] = "166182658461433445531477041328"
-    #     params["oauth_signature_method"] = signature_method
-    #     params["oauth_version"] = "1.0"
-    #     params["oauth_callback"] = 'localhost:8888/wordpress'
-    #
-    #     sig = wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
-    #     expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
-    #     self.assertEqual(sig, expected_sig)
 
 class OAuth3LegTestcases(unittest.TestCase):
     def setUp(self):
@@ -732,3 +698,71 @@ class OAuth3LegTestcases(unittest.TestCase):
             access_token, access_token_secret = self.api.oauth.get_request_token()
             self.assertEquals(access_token, 'XXXXXXXXXXXX')
             self.assertEquals(access_token_secret, 'YYYYYYYYYYYY')
+
+class ApiTestCases(unittest.TestCase):
+    def setUp(self):
+        self.apiParams = {
+            'url':'http://ich.local:8888/woocommerce/',
+            'api':'wc-api',
+            'version':'v3',
+            'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
+            'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
+        }
+
+    # @unittest.skip("should only work on my machine")
+    @debug_on()
+    def test_APIGet(self):
+        wcapi = API(**self.apiParams)
+        response = wcapi.get('products')
+        # print UrlUtils.beautify_response(response)
+        self.assertIn(response.status_code, [200,201])
+
+        response_obj = response.json()
+        self.assertIn('products', response_obj)
+        self.assertEqual(len(response_obj['products']), 10)
+        # print "test_APIGet", response_obj
+
+    # @unittest.skip("should only work on my machine")
+    @debug_on()
+    def test_APIGetWithSimpleQuery(self):
+        wcapi = API(**self.apiParams)
+        response = wcapi.get('products?page=2')
+        # print UrlUtils.beautify_response(response)
+        self.assertIn(response.status_code, [200,201])
+
+        response_obj = response.json()
+        self.assertIn('products', response_obj)
+        self.assertEqual(len(response_obj['products']), 10)
+        # print "test_ApiGenWithSimpleQuery", response_obj
+
+    # @unittest.skip("should only work on my machine")
+    @debug_on()
+    def test_APIGetWithComplexQuery(self):
+        wcapi = API(**self.apiParams)
+        response = wcapi.get('products?page=2&filter%5Blimit%5D=2')
+        self.assertIn(response.status_code, [200,201])
+        response_obj = response.json()
+        self.assertIn('products', response_obj)
+        self.assertEqual(len(response_obj['products']), 2)
+
+        response = wcapi.get('products?oauth_consumer_key=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&oauth_nonce=037470f3b08c9232b0888f52cb9d4685b44d8fd1&oauth_signature=wrKfuIjbwi%2BTHynAlTP4AssoPS0%3D&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1481606275&filter%5Blimit%5D=3')
+        self.assertIn(response.status_code, [200,201])
+        response_obj = response.json()
+        self.assertIn('products', response_obj)
+        self.assertEqual(len(response_obj['products']), 3)
+
+    def test_APIPutWithSimpleQuery(self):
+        wcapi = API(**self.apiParams)
+        nonce = str(random.random())
+        response = wcapi.put('products/633?filter%5Blimit%5D=5', {"product":{"title":str(nonce)}})
+        request_params = UrlUtils.get_query_dict_singular(response.request.url)
+        # print "\ntest_APIPutWithSimpleQuery"
+        # print "request url", response.request.url
+        # print "response", UrlUtils.beautify_response(response)
+        response_obj = response.json()
+        # print "response obj", response_obj
+        self.assertEqual(response_obj['product']['title'], str(nonce))
+        self.assertEqual(request_params['filter[limit]'], str(5))
+
+if __name__ == '__main__':
+    unittest.main()
