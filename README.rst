@@ -1,8 +1,8 @@
 Wordpress API - Python Client
 ===============================
 
-A Python wrapper for the Wordpress REST API that also works on the WooCommerce REST API v1-3 and WooCommerce WP-API v1.
-Forked from the excellent Wordpress API written by Claudio Sanches @ WooThemes and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
+A Python wrapper for the Wordpress REST API v1-2 that also works on the WooCommerce REST API v1-3 and WooCommerce WP-API v1.
+Forked from the excellent Woocommerce API written by Claudio Sanches and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
 
 I created this fork because I prefer the way that the wc-api-python client interfaces with
 the Wordpress API compared to the existing python client, https://pypi.python.org/pypi/wordpress_json
@@ -18,9 +18,11 @@ Roadmap
 Requirements
 ------------
 
+Wordpress version 4.7+ comes pre-installed with REST API v2, so you don't need to have the WP REST API plugin if you have the latest Wordpress.
+
 You should have the following plugins installed on your wordpress site:
 
-- **WP REST API** (recommended version: 2.0+)
+- **WP REST API** (recommended version: 2.0+, only required for WP < v4.7)
 - **WP REST API - OAuth 1.0a Server** (https://github.com/WP-API/OAuth1)
 - **WP REST API - Meta Endpoints** (optional)
 
@@ -59,6 +61,10 @@ Getting started
 ---------------
 
 Generate API credentials (Consumer Key & Consumer Secret) following these instructions: http://v2.wp-api.org/guide/authentication/
+
+Simply go to Users -> Applications and create an Application, e.g. "REST API".
+Enter a callback URL that you will be able to remember later such as "http://example.com/oauth1_callback" (not really important for this client).
+Store the resulting Key and Secret somewhere safe.
 
 Check out the Wordpress API endpoints and data that can be manipulated in http://v2.wp-api.org/reference/.
 
