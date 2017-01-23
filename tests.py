@@ -15,6 +15,7 @@ from wordpress.transport import API_Requests_Wrapper
 from wordpress.api import API
 from wordpress.oauth import OAuth
 import random
+import platform
 
 try:
     from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
@@ -699,7 +700,8 @@ class OAuth3LegTestcases(unittest.TestCase):
             self.assertEquals(access_token, 'XXXXXXXXXXXX')
             self.assertEquals(access_token_secret, 'YYYYYYYYYYYY')
 
-class ApiTestCases(unittest.TestCase):
+@unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
+class WCApiTestCases(unittest.TestCase):
     def setUp(self):
         self.apiParams = {
             'url':'http://ich.local:8888/woocommerce/',
@@ -708,8 +710,7 @@ class ApiTestCases(unittest.TestCase):
             'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
             'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
         }
-
-    # @unittest.skip("should only work on my machine")
+    
     @debug_on()
     def test_APIGet(self):
         wcapi = API(**self.apiParams)
@@ -722,7 +723,6 @@ class ApiTestCases(unittest.TestCase):
         self.assertEqual(len(response_obj['products']), 10)
         # print "test_APIGet", response_obj
 
-    # @unittest.skip("should only work on my machine")
     @debug_on()
     def test_APIGetWithSimpleQuery(self):
         wcapi = API(**self.apiParams)
@@ -735,7 +735,6 @@ class ApiTestCases(unittest.TestCase):
         self.assertEqual(len(response_obj['products']), 10)
         # print "test_ApiGenWithSimpleQuery", response_obj
 
-    # @unittest.skip("should only work on my machine")
     @debug_on()
     def test_APIGetWithComplexQuery(self):
         wcapi = API(**self.apiParams)
@@ -763,6 +762,10 @@ class ApiTestCases(unittest.TestCase):
         # print "response obj", response_obj
         self.assertEqual(response_obj['product']['title'], str(nonce))
         self.assertEqual(request_params['filter[limit]'], str(5))
+
+class WPAPITestCases(unittest.TestCase):
+    pass
+
 
 if __name__ == '__main__':
     unittest.main()
