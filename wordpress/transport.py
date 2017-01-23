@@ -31,11 +31,6 @@ class API_Requests_Wrapper(object):
         self.timeout = kwargs.get("timeout", 5)
         self.verify_ssl = kwargs.get("verify_ssl", True)
         self.query_string_auth = kwargs.get("query_string_auth", False)
-        self.headers = {
-            "user-agent": "Wordpress API Client-Python/%s" % __version__,
-            "content-type": "application/json;charset=utf-8",
-            "accept": "application/json"
-        }
         self.session = Session()
 
     @property
@@ -59,10 +54,17 @@ class API_Requests_Wrapper(object):
         ])
 
     def request(self, method, url, auth=None, params=None, data=None, **kwargs):
+        headers = {
+            "user-agent": "Wordpress API Client-Python/%s" % __version__,
+            "accept": "application/json"
+        }
+        if data is not None:
+            headers["content-type"] = "application/json;charset=utf-8"
+
         request_kwargs = dict(
             method=method,
             url=url,
-            headers=self.headers,
+            headers=headers,
             verify=self.verify_ssl,
             timeout=self.timeout,
         )
