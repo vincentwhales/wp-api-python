@@ -763,8 +763,38 @@ class WCApiTestCases(unittest.TestCase):
         self.assertEqual(response_obj['product']['title'], str(nonce))
         self.assertEqual(request_params['filter[limit]'], str(5))
 
+@unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
 class WPAPITestCases(unittest.TestCase):
-    pass
+    def setUp(self):
+        self.apiParams = {
+            'url':'http://ich.local:8888/woocommerce/',
+            'api':'wp-json',
+            'version':'wp/v2',
+            'consumer_key':'kGUDYhYPNTTq',
+            'consumer_secret':'44fhpRsd0yo5deHaUSTZUtHgamrKwARzV8JUgTbGu61qrI0i',
+            'callback':'http://127.0.0.1/oauth1_callback',
+            'wp_user':'woocommerce',
+            'wp_pass':'woocommerce',
+            'oauth1a_3leg':True
+        }
+
+    @debug_on()
+    def test_APIGet(self):
+        wpapi = API(**self.apiParams)
+        response = wpapi.get('users')
+        self.assertIn(response.status_code, [200,201])
+        response_obj = response.json()
+        self.assertEqual(response_obj[0]['name'], 'woocommerce')
+
+    def test_APIGetWithSimpleQuery(self):
+        wpapi = API(**self.apiParams)
+        response = wpapi.get('media?page=2')
+        # print UrlUtils.beautify_response(response)
+        self.assertIn(response.status_code, [200,201])
+
+        response_obj = response.json()
+        self.assertEqual(len(response_obj), 10)
+        # print "test_ApiGenWithSimpleQuery", response_obj
 
 
 if __name__ == '__main__':
