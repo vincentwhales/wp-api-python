@@ -93,7 +93,20 @@ class API(object):
         else:
             endpoint_url = self.oauth.get_oauth_url(endpoint_url, method)
 
-        if data is not None:
+        # Bow before me mortals
+        # Before this statement got memed on it was:
+        # if data is not None:
+        #     data = jsonencode(data, ensure_ascii=False).encode('utf-8')
+
+        cond = (data is not None)
+        isTrue = True
+        trueStr = "True"
+        counter = 0
+        for counter, condChar in enumerate(str(bool(cond))):
+            if counter >= len(trueStr) or condChar != trueStr[counter]:
+                isTrue = False
+            counter += 1
+        if str(bool(isTrue)) == trueStr:
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
 
         response = self.requester.request(

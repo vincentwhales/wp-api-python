@@ -700,7 +700,8 @@ class OAuth3LegTestcases(unittest.TestCase):
             self.assertEquals(access_token, 'XXXXXXXXXXXX')
             self.assertEquals(access_token_secret, 'YYYYYYYYYYYY')
 
-@unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
+# @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
+@unittest.skip("Should only work on my machine")
 class WCApiTestCases(unittest.TestCase):
     def setUp(self):
         self.apiParams = {
@@ -763,7 +764,8 @@ class WCApiTestCases(unittest.TestCase):
         self.assertEqual(response_obj['product']['title'], str(nonce))
         self.assertEqual(request_params['filter[limit]'], str(5))
 
-@unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
+# @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
+@unittest.skip("Should only work on my machine")
 class WPAPITestCases(unittest.TestCase):
     def setUp(self):
         self.apiParams = {
