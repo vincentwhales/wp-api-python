@@ -80,7 +80,7 @@ Setup for the old Wordpress API:
     wpapi = API(
         url="http://example.com",
         consumer_key="XXXXXXXXXXXX",
-        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         api="wp-json",
         version=None,
         wp_user="XXXX",
@@ -96,7 +96,7 @@ Setup for the new WP REST API v2:
     wpapi = API(
         url="http://example.com",
         consumer_key="XXXXXXXXXXXX",
-        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         api="wp-json",
         version="wp/v2",
         wp_user="XXXX",
@@ -112,7 +112,7 @@ Setup for the old WooCommerce API v3:
     wcapi = API(
         url="http://example.com",
         consumer_key="ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        consumer_secret="cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        consumer_secret="cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         api="wc-api",
         version="v3"
     )
