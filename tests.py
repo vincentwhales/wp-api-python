@@ -8,12 +8,12 @@ from httmock import all_requests, HTTMock, urlmatch
 from collections import OrderedDict
 
 import wordpress
-from wordpress import oauth
+from wordpress import auth
 from wordpress import __default_api_version__, __default_api__
 from wordpress.helpers import UrlUtils, SeqUtils, StrUtils
 from wordpress.transport import API_Requests_Wrapper
 from wordpress.api import API
-from wordpress.oauth import OAuth
+from wordpress.auth import OAuth
 import random
 import platform
 
@@ -35,7 +35,7 @@ def debug_on(*exceptions):
                 return f(*args, **kwargs)
             except exceptions:
                 info = sys.exc_info()
-                traceback.print_exception(*info) 
+                traceback.print_exception(*info)
                 pdb.post_mortem(info[2])
         return wrapper
     return decorator
@@ -167,11 +167,11 @@ class WordpressTestCase(unittest.TestCase):
     def test_oauth_sorted_params(self):
         """ Test order of parameters for OAuth signature """
         def check_sorted(keys, expected):
-            params = oauth.OrderedDict()
+            params = auth.OrderedDict()
             for key in keys:
                 params[key] = ''
 
-            params = oauth.OAuth.sorted_params(params)
+            params = auth.OAuth.sorted_params(params)
             ordered = [key for key, value in params]
             self.assertEqual(ordered, expected)
 
@@ -262,12 +262,12 @@ class HelperTestcase(unittest.TestCase):
         self.assertEquals(
             result,
             {
-                'filter[limit]': '2', 
-                'oauth_nonce': 'c4f2920b0213c43f2e8d3d3333168ec4a22222d1', 
-                'oauth_timestamp': '1481601370', 
-                'oauth_consumer_key': 'ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 
-                'oauth_signature_method': 'HMAC-SHA1', 
-                'oauth_signature': '3ibOjMuhj6JGnI43BQZGniigHh8=', 
+                'filter[limit]': '2',
+                'oauth_nonce': 'c4f2920b0213c43f2e8d3d3333168ec4a22222d1',
+                'oauth_timestamp': '1481601370',
+                'oauth_consumer_key': 'ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+                'oauth_signature_method': 'HMAC-SHA1',
+                'oauth_signature': '3ibOjMuhj6JGnI43BQZGniigHh8=',
                 'page': '2'
             }
         )
@@ -524,12 +524,12 @@ class OAuthTestcases(unittest.TestCase):
 
     def test_get_sign_key(self):
         self.assertEqual(
-            self.wcapi.oauth.get_sign_key(self.consumer_secret),
+            self.wcapi.auth.get_sign_key(self.consumer_secret),
             "%s&" % self.consumer_secret
         )
 
         self.assertEqual(
-            self.wcapi.oauth.get_sign_key(self.twitter_consumer_secret, self.twitter_token_secret),
+            self.wcapi.auth.get_sign_key(self.twitter_consumer_secret, self.twitter_token_secret),
             self.twitter_signing_key
         )
 
@@ -558,13 +558,13 @@ class OAuthTestcases(unittest.TestCase):
         # params["oauth_version"] = "1.0"
         # params["oauth_callback"] = 'localhost:8888/wordpress'
         #
-        # sig = self.wcapi.oauth.generate_oauth_signature("POST", params, endpoint_url)
+        # sig = self.wcapi.auth.generate_oauth_signature("POST", params, endpoint_url)
         # expected_sig = "517qNKeq/vrLZGj2UH7+q8ILWAg="
         # self.assertEqual(sig, expected_sig)
 
         # TEST WITH RFC EXAMPLE 1 DATA
 
-        rfc1_request_signature = self.rfc1_api.oauth.generate_oauth_signature(
+        rfc1_request_signature = self.rfc1_api.auth.generate_oauth_signature(
             self.rfc1_request_method,
             self.rfc1_request_params,
             self.rfc1_request_target_url,
@@ -576,7 +576,7 @@ class OAuthTestcases(unittest.TestCase):
 
         # TEST WITH TWITTER DATA
 
-        twitter_signature = self.twitter_api.oauth.generate_oauth_signature(
+        twitter_signature = self.twitter_api.auth.generate_oauth_signature(
             self.twitter_method,
             self.twitter_params_raw,
             self.twitter_target_url,
@@ -586,7 +586,7 @@ class OAuthTestcases(unittest.TestCase):
 
         # TEST WITH LEXEV DATA
 
-        lexev_request_signature = self.lexev_api.oauth.generate_oauth_signature(
+        lexev_request_signature = self.lexev_api.auth.generate_oauth_signature(
             method=self.lexev_request_method,
             params=self.lexev_request_params,
             url=self.lexev_request_url
@@ -605,7 +605,7 @@ class OAuthTestcases(unittest.TestCase):
         params["oauth_version"] = "1.0"
         params["oauth_callback"] = 'localhost:8888/wordpress'
 
-        signed_url = self.wcapi.oauth.add_params_sign("GET", endpoint_url, params)
+        signed_url = self.wcapi.auth.add_params_sign("GET", endpoint_url, params)
 
         signed_url_params = parse_qsl(urlparse(signed_url).query)
         # self.assertEqual('page', signed_url_params[-1][0])
@@ -664,7 +664,7 @@ class OAuth3LegTestcases(unittest.TestCase):
     def test_get_sign_key(self):
         oauth_token_secret = "PNW9j1yBki3e7M7EqB5qZxbe9n5tR6bIIefSMQ9M2pdyRI9g"
 
-        key = self.api.oauth.get_sign_key(self.consumer_secret, oauth_token_secret)
+        key = self.api.auth.get_sign_key(self.consumer_secret, oauth_token_secret)
         self.assertEqual(
             key,
             "%s&%s" % (self.consumer_secret, oauth_token_secret)
@@ -676,7 +676,7 @@ class OAuth3LegTestcases(unittest.TestCase):
 
         with HTTMock(self.woo_api_mock):
             # call requests
-            authentication = self.api.oauth.authentication
+            authentication = self.api.auth.authentication
         self.assertEquals(
             authentication,
             {
@@ -692,11 +692,11 @@ class OAuth3LegTestcases(unittest.TestCase):
     def test_get_request_token(self):
 
         with HTTMock(self.woo_api_mock):
-            authentication = self.api.oauth.authentication
+            authentication = self.api.auth.authentication
             self.assertTrue(authentication)
 
         with HTTMock(self.woo_authentication_mock):
-            access_token, access_token_secret = self.api.oauth.get_request_token()
+            access_token, access_token_secret = self.api.auth.get_request_token()
             self.assertEquals(access_token, 'XXXXXXXXXXXX')
             self.assertEquals(access_token_secret, 'YYYYYYYYYYYY')
 
@@ -711,7 +711,7 @@ class WCApiTestCases(unittest.TestCase):
             'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
             'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
         }
-    
+
     @debug_on()
     def test_APIGet(self):
         wcapi = API(**self.apiParams)

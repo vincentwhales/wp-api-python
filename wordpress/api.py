@@ -8,7 +8,7 @@ __title__ = "wordpress-api"
 
 from requests import request
 from json import dumps as jsonencode
-from wordpress.oauth import OAuth, OAuth_3Leg
+from wordpress.auth import OAuth, OAuth_3Leg, BasicAuth
 from wordpress.transport import API_Requests_Wrapper
 from wordpress.helpers import UrlUtils
 
@@ -19,22 +19,26 @@ class API(object):
 
         self.requester = API_Requests_Wrapper(url=url, **kwargs)
 
-        oauth_kwargs = dict(
+        auth_kwargs = dict(
             requester=self.requester,
             consumer_key=consumer_key,
             consumer_secret=consumer_secret,
-            force_nonce=kwargs.get('force_nonce'),
-            force_timestamp=kwargs.get('force_timestamp')
         )
-
-        if kwargs.get('oauth1a_3leg'):
-            self.oauth1a_3leg = kwargs['oauth1a_3leg']
-            oauth_kwargs['callback'] = kwargs['callback']
-            oauth_kwargs['wp_user'] = kwargs['wp_user']
-            oauth_kwargs['wp_pass'] = kwargs['wp_pass']
-            self.oauth = OAuth_3Leg( **oauth_kwargs )
+        if kwargs.get('basic_auth'):
+            self.auth = BasicAuth(**auth_kwargs)
         else:
-            self.oauth = OAuth( **oauth_kwargs )
+            auth_kwargs.update(dict(
+                force_nonce=kwargs.get('force_nonce'),
+                force_timestamp=kwargs.get('force_timestamp')
+            ))
+            if kwargs.get('oauth1a_3leg'):
+                self.oauth1a_3leg = kwargs['oauth1a_3leg']
+                auth_kwargs['callback'] = kwargs['callback']
+                auth_kwargs['wp_user'] = kwargs['wp_user']
+                auth_kwargs['wp_pass'] = kwargs['wp_pass']
+                self.auth = OAuth_3Leg( **auth_kwargs )
+            else:
+                self.auth = OAuth( **auth_kwargs )
 
     @property
     def url(self):
@@ -66,47 +70,36 @@ class API(object):
 
     @property
     def consumer_key(self):
-        return self.oauth.consumer_key
+        return self.auth.consumer_key
 
     @property
     def consumer_secret(self):
-        return self.oauth.consumer_secret
+        return self.auth.consumer_secret
 
     @property
     def callback(self):
-        return self.oauth.callback
+        return self.auth.callback
 
     def __request(self, method, endpoint, data):
         """ Do requests """
+
         endpoint_url = self.requester.endpoint_url(endpoint)
         # endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
         endpoint_params = {}
         auth = None
 
-        if self.requester.is_ssl is True and self.requester.query_string_auth is False:
-            auth = (self.oauth.consumer_key, self.oauth.consumer_secret)
-        elif self.requester.is_ssl is True and self.requester.query_string_auth is True:
-            endpoint_params.update({
-                "consumer_key": self.oauth.consumer_key,
-                "consumer_secret": self.oauth.consumer_secret
-            })
+        if self.requester.is_ssl or isinstance(self.auth, BasicAuth):
+            if self.requester.query_string_auth:
+                endpoint_params.update({
+                    "consumer_key": self.auth.consumer_key,
+                    "consumer_secret": self.auth.consumer_secret
+                })
+            else:
+                auth = (self.auth.consumer_key, self.auth.consumer_secret)
         else:
-            endpoint_url = self.oauth.get_oauth_url(endpoint_url, method)
+            endpoint_url = self.auth.get_oauth_url(endpoint_url, method)
 
-        # Bow before me mortals
-        # Before this statement got memed on it was:
-        # if data is not None:
-        #     data = jsonencode(data, ensure_ascii=False).encode('utf-8')
-
-        cond = (data is not None)
-        isTrue = True
-        trueStr = "True"
-        counter = 0
-        for counter, condChar in enumerate(str(bool(cond))):
-            if counter >= len(trueStr) or condChar != trueStr[counter]:
-                isTrue = False
-            counter += 1
-        if str(bool(isTrue)) == trueStr:
+        if data is not None:
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
 
         response = self.requester.request(

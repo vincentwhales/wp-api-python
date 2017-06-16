@@ -44,7 +44,21 @@ class API_Requests_Wrapper(object):
             self.api
         ])
 
+    @property
+    def api_ver_url(self):
+        return UrlUtils.join_components([
+            self.url,
+            self.api,
+            self.api_version
+        ])
+
+    @property
+    def api_ver_url_no_port(self):
+        return UrlUtils.remove_port(self.api_ver_url)
+
     def endpoint_url(self, endpoint):
+        endpoint = StrUtils.decapitate(endpoint, self.api_ver_url)
+        endpoint = StrUtils.decapitate(endpoint, self.api_ver_url_no_port)
         endpoint = StrUtils.decapitate(endpoint, '/')
         return UrlUtils.join_components([
             self.url,

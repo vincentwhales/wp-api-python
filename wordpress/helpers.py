@@ -6,6 +6,8 @@ Wordpress Hellpers Class
 
 __title__ = "wordpress-requests"
 
+import re
+
 import posixpath
 
 try:
@@ -165,3 +167,18 @@ class UrlUtils(object):
     def beautify_response(response):
         """ Returns a beautified response in the default locale """
         return BeautifulSoup(response.text, 'lxml').prettify().encode(errors='backslashreplace')
+
+    @classmethod
+    def remove_port(cls, url):
+        """ Remove the port number from a URL """
+
+        urlparse_result = urlparse(url)
+
+        return urlunparse(URLParseResult(
+            scheme=urlparse_result.scheme,
+            netloc=re.sub(r':\d+', r'', urlparse_result.netloc),
+            path=urlparse_result.path,
+            params=urlparse_result.params,
+            query=urlparse_result.query,
+            fragment=urlparse_result.fragment
+        ))

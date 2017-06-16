@@ -4,7 +4,7 @@
 Wordpress OAuth1.0a Class
 """
 
-__title__ = "wordpress-oauth"
+__title__ = "wordpress-auth"
 
 from time import time
 from random import randint
@@ -32,20 +32,11 @@ except ImportError:
 from wordpress.helpers import UrlUtils
 
 
-class OAuth(object):
-    oauth_version = '1.0'
-    force_nonce = None
-    force_timestamp = None
+class Auth(object):
+    """ Boilerplate for handling authentication stuff. """
 
-    """ API Class """
-
-    def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
+    def __init__(self, requester):
         self.requester = requester
-        self.consumer_key = consumer_key
-        self.consumer_secret = consumer_secret
-        self.signature_method = kwargs.get('signature_method', 'HMAC-SHA1')
-        self.force_timestamp = kwargs.get('force_timestamp')
-        self.force_nonce = kwargs.get('force_nonce')
 
     @property
     def api_version(self):
@@ -54,6 +45,75 @@ class OAuth(object):
     @property
     def api_namespace(self):
         return self.requester.api
+
+    @classmethod
+    def normalize_params(cls, params):
+        """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+        if isinstance(params, dict):
+            params = params.items()
+        params = \
+            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
+                for key, value in params]
+
+        # print "NORMALIZED: %s\n" % str(params.keys())
+        # resposne = urlencode(params)
+        response = params
+        # print "RESPONSE: %s\n" % str(resposne.split('&'))
+        return response
+
+    @classmethod
+    def sorted_params(cls, params):
+        """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+
+        if isinstance(params, dict):
+            params = params.items()
+
+        # return sorted(params)
+        ordered = []
+        base_keys = sorted(set(k.split('[')[0] for k, v in params))
+        keys_seen = []
+        for base in base_keys:
+            for key, value in params:
+                if key == base or key.startswith(base + '['):
+                    if key not in keys_seen:
+                        ordered.append((key, value))
+                        keys_seen.append(key)
+
+        return ordered
+
+    @classmethod
+    def normalize_str(cls, string):
+        return quote(string, '')
+
+    @classmethod
+    def flatten_params(cls, params):
+        if isinstance(params, dict):
+            params = params.items()
+        params = cls.normalize_params(params)
+        params = cls.sorted_params(params)
+        return "&".join(["%s=%s"%(key, value) for key, value in params])
+
+class BasicAuth(Auth):
+    def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
+        super(BasicAuth, self).__init__(requester)
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+
+
+class OAuth(Auth):
+    oauth_version = '1.0'
+    force_nonce = None
+    force_timestamp = None
+
+    """ API Class """
+
+    def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
+        super(OAuth, self).__init__(requester)
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.signature_method = kwargs.get('signature_method', 'HMAC-SHA1')
+        self.force_timestamp = kwargs.get('force_timestamp')
+        self.force_nonce = kwargs.get('force_nonce')
 
     def get_sign_key(self, consumer_secret, token_secret=None):
         "gets consumer_secret and turns it into a string suitable for signing"
@@ -136,53 +196,6 @@ class OAuth(object):
         sig_b64 = binascii.b2a_base64(sig.digest())[:-1]
         # print "\nsig_b64: %s" % sig_b64
         return sig_b64
-
-    @classmethod
-    def sorted_params(cls, params):
-        """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
-
-        if isinstance(params, dict):
-            params = params.items()
-
-        # return sorted(params)
-        ordered = []
-        base_keys = sorted(set(k.split('[')[0] for k, v in params))
-        keys_seen = []
-        for base in base_keys:
-            for key, value in params:
-                if key == base or key.startswith(base + '['):
-                    if key not in keys_seen:
-                        ordered.append((key, value))
-                        keys_seen.append(key)
-
-        return ordered
-
-    @classmethod
-    def normalize_str(cls, string):
-        return quote(string, '')
-
-    @classmethod
-    def normalize_params(cls, params):
-        """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
-        if isinstance(params, dict):
-            params = params.items()
-        params = \
-            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
-                for key, value in params]
-
-        # print "NORMALIZED: %s\n" % str(params.keys())
-        # resposne = urlencode(params)
-        response = params
-        # print "RESPONSE: %s\n" % str(resposne.split('&'))
-        return response
-
-    @classmethod
-    def flatten_params(cls, params):
-        if isinstance(params, dict):
-            params = params.items()
-        params = cls.normalize_params(params)
-        params = cls.sorted_params(params)
-        return "&".join(["%s=%s"%(key, value) for key, value in params])
 
     @classmethod
     def generate_timestamp(cls):
