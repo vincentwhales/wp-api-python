@@ -376,7 +376,7 @@ class BasicAuthTestcases(unittest.TestCase):
             **basic_api_params
         )
         endpoint_url = api.requester.endpoint_url(self.endpoint)
-        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+        endpoint_url = api.auth.get_auth_url(endpoint_url, 'GET')
         self.assertEqual(
             endpoint_url,
             UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, self.endpoint])
@@ -389,7 +389,7 @@ class BasicAuthTestcases(unittest.TestCase):
             **query_string_api_params
         )
         endpoint_url = api.requester.endpoint_url(self.endpoint)
-        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+        endpoint_url = api.auth.get_auth_url(endpoint_url, 'GET')
         expected_endpoint_url = '%s?consumer_key=%s&consumer_secret=%s' % (self.endpoint, self.consumer_key, self.consumer_secret)
         expected_endpoint_url = UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, expected_endpoint_url])
         self.assertEqual(
@@ -397,7 +397,7 @@ class BasicAuthTestcases(unittest.TestCase):
             expected_endpoint_url
         )
         endpoint_url = api.requester.endpoint_url(self.endpoint)
-        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+        endpoint_url = api.auth.get_auth_url(endpoint_url, 'GET')
 
 
 class OAuthTestcases(unittest.TestCase):

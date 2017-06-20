@@ -88,7 +88,7 @@ class API(object):
         """ Do requests """
 
         endpoint_url = self.requester.endpoint_url(endpoint)
-        endpoint_url = self.auth.get_oauth_url(endpoint_url, method)
+        endpoint_url = self.auth.get_auth_url(endpoint_url, method)
         auth = self.auth.get_auth()
 
         if data is not None:

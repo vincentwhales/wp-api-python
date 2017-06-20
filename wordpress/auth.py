@@ -93,7 +93,7 @@ class Auth(object):
         params = cls.sorted_params(params)
         return "&".join(["%s=%s"%(key, value) for key, value in params])
 
-    def get_oauth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with added Auth params """
         return endpoint_url
 
@@ -108,7 +108,7 @@ class BasicAuth(Auth):
         self.consumer_secret = consumer_secret
         self.query_string_auth = kwargs.get("query_string_auth", False)
 
-    def get_oauth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method):
         if self.query_string_auth:
             endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
             endpoint_params.update({
@@ -189,7 +189,7 @@ class OAuth(Auth):
             ("oauth_timestamp", self.generate_timestamp()),
         ]
 
-    def get_oauth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with added Auth params """
         params = self.get_params()
 
@@ -305,7 +305,7 @@ class OAuth_3Leg(OAuth):
     #             key = "&".join([consumer_secret, oauth_token_secret])
     #     return key
 
-    def get_oauth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
         assert self.access_token, "need a valid access token for this step"
 
