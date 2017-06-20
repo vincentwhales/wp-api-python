@@ -24,22 +24,14 @@ class API(object):
             consumer_key=consumer_key,
             consumer_secret=consumer_secret,
         )
+        auth_kwargs.update(kwargs)
+
         if kwargs.get('basic_auth'):
-            if 'query_string_auth' in kwargs:
-                auth_kwargs.update(dict(
-                    query_string_auth=kwargs.get("query_string_auth")
-                ))
             self.auth = BasicAuth(**auth_kwargs)
         else:
-            auth_kwargs.update(dict(
-                force_nonce=kwargs.get('force_nonce'),
-                force_timestamp=kwargs.get('force_timestamp')
-            ))
             if kwargs.get('oauth1a_3leg'):
-                self.oauth1a_3leg = kwargs['oauth1a_3leg']
-                auth_kwargs['callback'] = kwargs['callback']
-                auth_kwargs['wp_user'] = kwargs['wp_user']
-                auth_kwargs['wp_pass'] = kwargs['wp_pass']
+                if 'callback' not in auth_kwargs:
+                    raise TypeError("callback url not specified")
                 self.auth = OAuth_3Leg( **auth_kwargs )
             else:
                 self.auth = OAuth( **auth_kwargs )
@@ -51,10 +43,6 @@ class API(object):
     @property
     def timeout(self):
         return self.requester.timeout
-
-    @property
-    def query_string_auth(self):
-        return self.requester.query_string_auth
 
     @property
     def namespace(self):

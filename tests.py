@@ -4,9 +4,10 @@ import sys
 import pdb
 import functools
 import traceback
-from httmock import all_requests, HTTMock, urlmatch
 from collections import OrderedDict
+from tempfile import mkstemp
 
+from httmock import all_requests, HTTMock, urlmatch
 import wordpress
 from wordpress import auth
 from wordpress import __default_api_version__, __default_api__
@@ -746,15 +747,66 @@ class OAuth3LegTestcases(unittest.TestCase):
             self.assertTrue(authentication)
 
         with HTTMock(self.woo_authentication_mock):
-            access_token, access_token_secret = self.api.auth.get_request_token()
-            self.assertEquals(access_token, 'XXXXXXXXXXXX')
-            self.assertEquals(access_token_secret, 'YYYYYYYYYYYY')
+            request_token, request_token_secret = self.api.auth.get_request_token()
+            self.assertEquals(request_token, 'XXXXXXXXXXXX')
+            self.assertEquals(request_token_secret, 'YYYYYYYYYYYY')
+
+    def test_store_access_creds(self):
+        _, creds_store_path = mkstemp("wp-api-python-test-store-access-creds.json")
+        api = API(
+            url="http://woo.test",
+            consumer_key=self.consumer_key,
+            consumer_secret=self.consumer_secret,
+            oauth1a_3leg=True,
+            wp_user='test_user',
+            wp_pass='test_pass',
+            callback='http://127.0.0.1/oauth1_callback',
+            access_token='XXXXXXXXXXXX',
+            access_token_secret='YYYYYYYYYYYY',
+            creds_store=creds_store_path
+        )
+        api.auth.store_access_creds()
+
+        with open(creds_store_path) as creds_store_file:
+            self.assertEqual(
+                creds_store_file.read(),
+                '{"access_token": "XXXXXXXXXXXX", "access_token_secret": "YYYYYYYYYYYY"}'
+            )
+
+    def test_retrieve_access_creds(self):
+        _, creds_store_path = mkstemp("wp-api-python-test-store-access-creds.json")
+        with open(creds_store_path, 'w+') as creds_store_file:
+            creds_store_file.write('{"access_token": "XXXXXXXXXXXX", "access_token_secret": "YYYYYYYYYYYY"}')
+
+        api = API(
+            url="http://woo.test",
+            consumer_key=self.consumer_key,
+            consumer_secret=self.consumer_secret,
+            oauth1a_3leg=True,
+            wp_user='test_user',
+            wp_pass='test_pass',
+            callback='http://127.0.0.1/oauth1_callback',
+            creds_store=creds_store_path
+        )
+
+        api.auth.retrieve_access_creds()
+
+        self.assertEqual(
+            api.auth.access_token,
+            'XXXXXXXXXXXX'
+        )
+
+        self.assertEqual(
+            api.auth.access_token_secret,
+            'YYYYYYYYYYYY'
+        )
 
 # @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
 @unittest.skip("Should only work on my machine")
 class WCApiTestCases(unittest.TestCase):
+    """ Tests for WC API V3 """
     def setUp(self):
-        self.apiParams = {
+        self.api_params = {
             'url':'http://ich.local:8888/woocommerce/',
             'api':'wc-api',
             'version':'v3',
@@ -762,9 +814,8 @@ class WCApiTestCases(unittest.TestCase):
             'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
         }
 
-    @debug_on()
     def test_APIGet(self):
-        wcapi = API(**self.apiParams)
+        wcapi = API(**self.api_params)
         response = wcapi.get('products')
         # print UrlUtils.beautify_response(response)
         self.assertIn(response.status_code, [200,201])
@@ -774,9 +825,8 @@ class WCApiTestCases(unittest.TestCase):
         self.assertEqual(len(response_obj['products']), 10)
         # print "test_APIGet", response_obj
 
-    @debug_on()
     def test_APIGetWithSimpleQuery(self):
-        wcapi = API(**self.apiParams)
+        wcapi = API(**self.api_params)
         response = wcapi.get('products?page=2')
         # print UrlUtils.beautify_response(response)
         self.assertIn(response.status_code, [200,201])
@@ -786,9 +836,8 @@ class WCApiTestCases(unittest.TestCase):
         self.assertEqual(len(response_obj['products']), 10)
         # print "test_ApiGenWithSimpleQuery", response_obj
 
-    @debug_on()
     def test_APIGetWithComplexQuery(self):
-        wcapi = API(**self.apiParams)
+        wcapi = API(**self.api_params)
         response = wcapi.get('products?page=2&filter%5Blimit%5D=2')
         self.assertIn(response.status_code, [200,201])
         response_obj = response.json()
@@ -802,50 +851,100 @@ class WCApiTestCases(unittest.TestCase):
         self.assertEqual(len(response_obj['products']), 3)
 
     def test_APIPutWithSimpleQuery(self):
-        wcapi = API(**self.apiParams)
+        wcapi = API(**self.api_params)
+        response = wcapi.get('products')
+        first_product = (response.json())['products'][0]
+        original_title = first_product['title']
+        product_id = first_product['id']
+
         nonce = str(random.random())
-        response = wcapi.put('products/633?filter%5Blimit%5D=5', {"product":{"title":str(nonce)}})
+        response = wcapi.put('products/%s?filter%%5Blimit%%5D=5' % (product_id), {"product":{"title":str(nonce)}})
         request_params = UrlUtils.get_query_dict_singular(response.request.url)
-        # print "\ntest_APIPutWithSimpleQuery"
-        # print "request url", response.request.url
-        # print "response", UrlUtils.beautify_response(response)
         response_obj = response.json()
-        # print "response obj", response_obj
         self.assertEqual(response_obj['product']['title'], str(nonce))
         self.assertEqual(request_params['filter[limit]'], str(5))
+
+        wcapi.put('products/%s' % (product_id), {"product":{"title":original_title}})
+
+@unittest.skip("Should only work on my machine")
+class WCApiTestCasesNew(unittest.TestCase):
+    """ Tests for New WC API """
+    def setUp(self):
+        self.api_params = {
+            'url':'http://ich.local:8888/woocommerce/',
+            'api':'wp-json',
+            'version':'wc/v2',
+            'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
+            'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
+            'callback':'http://127.0.0.1/oauth1_callback',
+        }
+
+    def test_APIGet(self):
+        wcapi = API(**self.api_params)
+        per_page = 10
+        response = wcapi.get('products?per_page=%d' % per_page)
+        self.assertIn(response.status_code, [200,201])
+        response_obj = response.json()
+        self.assertEqual(len(response_obj), per_page)
+
+
+    def test_APIPutWithSimpleQuery(self):
+        wcapi = API(**self.api_params)
+        response = wcapi.get('products')
+        first_product = (response.json())[0]
+        # from pprint import pformat
+        # print "first product %s" % pformat(response.json())
+        original_title = first_product['name']
+        product_id = first_product['id']
+
+        nonce = str(random.random())
+        response = wcapi.put('products/%s?filter%%5Blimit%%5D=5' % (product_id), {"name":str(nonce)})
+        request_params = UrlUtils.get_query_dict_singular(response.request.url)
+        response_obj = response.json()
+        self.assertEqual(response_obj['name'], str(nonce))
+        self.assertEqual(request_params['filter[limit]'], str(5))
+
+        wcapi.put('products/%s' % (product_id), {"name":original_title})
+
+
+    # def test_APIPut(self):
+
 
 # @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
 @unittest.skip("Should only work on my machine")
 class WPAPITestCases(unittest.TestCase):
     def setUp(self):
-        self.apiParams = {
+        self.creds_store = '~/wc-api-creds.json'
+        self.api_params = {
             'url':'http://ich.local:8888/woocommerce/',
             'api':'wp-json',
-            'version':'wp/v2',
-            'consumer_key':'kGUDYhYPNTTq',
-            'consumer_secret':'44fhpRsd0yo5deHaUSTZUtHgamrKwARzV8JUgTbGu61qrI0i',
+            'version':'wp/v1',
+            'consumer_key':'ox0p2NZSOja8',
+            'consumer_secret':'6Ye77tGlYgxjCexn1m7zGs0GLYmmoGXeHM82jgmw3kqffNLe',
             'callback':'http://127.0.0.1/oauth1_callback',
             'wp_user':'woocommerce',
             'wp_pass':'woocommerce',
-            'oauth1a_3leg':True
+            'oauth1a_3leg':True,
+            'creds_store': self.creds_store
         }
 
     @debug_on()
     def test_APIGet(self):
-        wpapi = API(**self.apiParams)
+        wpapi = API(**self.api_params)
+        wpapi.auth.clear_stored_creds()
         response = wpapi.get('users')
         self.assertIn(response.status_code, [200,201])
         response_obj = response.json()
         self.assertEqual(response_obj[0]['name'], 'woocommerce')
 
     def test_APIGetWithSimpleQuery(self):
-        wpapi = API(**self.apiParams)
-        response = wpapi.get('media?page=2')
+        wpapi = API(**self.api_params)
+        response = wpapi.get('media?page=2&per_page=2')
         # print UrlUtils.beautify_response(response)
         self.assertIn(response.status_code, [200,201])
 
         response_obj = response.json()
-        self.assertEqual(len(response_obj), 10)
+        self.assertEqual(len(response_obj), 2)
         # print "test_ApiGenWithSimpleQuery", response_obj
 
 

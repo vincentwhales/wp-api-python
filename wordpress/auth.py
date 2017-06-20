@@ -6,10 +6,12 @@ Wordpress OAuth1.0a Class
 
 __title__ = "wordpress-auth"
 
+import os
 from time import time
 from random import randint
 from hmac import new as HMAC
 from hashlib import sha1, sha256
+import json
 # from base64 import b64encode
 import binascii
 # import webbrowser
@@ -205,12 +207,13 @@ class OAuth_3Leg(OAuth):
         self.callback = callback
         self.wp_user = kwargs.get('wp_user')
         self.wp_pass = kwargs.get('wp_pass')
+        self._creds_store = kwargs.get('creds_store')
         self._authentication = None
-        self._request_token = None
+        self._request_token = kwargs.get('request_token')
         self.request_token_secret = None
         self._oauth_verifier = None
-        self._access_token = None
-        self.access_token_secret = None
+        self._access_token = kwargs.get('access_token')
+        self.access_token_secret = kwargs.get('access_token_secret')
 
     @property
     def authentication(self):
@@ -240,23 +243,16 @@ class OAuth_3Leg(OAuth):
     def access_token(self):
         """ This is the oauth_token used to sign requests to protected resources
         automatically generated if accessed before generated """
+        if not self._access_token and self.creds_store:
+            self.retrieve_access_creds()
         if not self._access_token:
             self.get_access_token()
         return self._access_token
 
-    # def get_sign_key(self, consumer_secret, oauth_token_secret=None):
-    #     "gets consumer_secret and oauth_token_secret and turns it into a string suitable for signing"
-    #     if not oauth_token_secret:
-    #         key = super(OAuth_3Leg, self).get_sign_key(consumer_secret)
-    #     else:
-    #         oauth_token_secret = str(oauth_token_secret) if oauth_token_secret else ''
-    #         consumer_secret = str(consumer_secret) if consumer_secret else ''
-    #         # oauth_token_secret has been specified
-    #         if not consumer_secret:
-    #             key = str(oauth_token_secret)
-    #         else:
-    #             key = "&".join([consumer_secret, oauth_token_secret])
-    #     return key
+    @property
+    def creds_store(self):
+        if self._creds_store:
+            return os.path.expanduser(self._creds_store)
 
     def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
@@ -271,25 +267,6 @@ class OAuth_3Leg(OAuth):
         sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
 
         return self.add_params_sign(method, endpoint_url, params, sign_key)
-
-        # params = OrderedDict()
-        # params["oauth_consumer_key"] = self.consumer_key
-        # params["oauth_timestamp"] = self.generate_timestamp()
-        # params["oauth_nonce"] = self.generate_nonce()
-        # params["oauth_signature_method"] = self.signature_method
-        # params["oauth_token"] = self.access_token
-        #
-        # sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
-        #
-        # print "signing with key: %s" % sign_key
-        #
-        # return self.add_params_sign(method, endpoint_url, params, sign_key)
-
-    # def get_params(self, get_access_token=False):
-    #     params = super(OAuth_3Leg, self).get_params()
-    #     if get_access_token:
-    #         params.append(('oauth_token', self.access_token))
-    #     return params
 
     def discover_auth(self):
         """ Discovers the location of authentication resourcers from the API"""
@@ -315,13 +292,6 @@ class OAuth_3Leg(OAuth):
         params += [
             ('oauth_callback', self.callback)
         ]
-        # params = OrderedDict()
-        # params["oauth_consumer_key"] = self.consumer_key
-        # params["oauth_timestamp"] = self.generate_timestamp()
-        # params["oauth_nonce"] = self.generate_nonce()
-        # params["oauth_signature_method"] = self.signature_method
-        # params["oauth_callback"] = self.callback
-        # params["oauth_version"] = self.oauth_version
 
         request_token_url = self.authentication['oauth1']['request']
         request_token_url = self.add_params_sign("GET", request_token_url, params)
@@ -479,6 +449,50 @@ class OAuth_3Leg(OAuth):
         self._oauth_verifier = final_location_queries['oauth_verifier'][0]
         return self._oauth_verifier
 
+    def store_access_creds(self):
+        """ store the access_token and access_token_secret locally. """
+
+        if not self.creds_store:
+            return
+
+        creds = OrderedDict()
+        if self._access_token:
+            creds['access_token'] = self._access_token
+        if self.access_token_secret:
+            creds['access_token_secret'] = self.access_token_secret
+        if creds:
+            with open(self.creds_store, 'w+') as creds_store_file:
+                json.dump(creds, creds_store_file, ensure_ascii=False, encoding='utf-8')
+
+    def retrieve_access_creds(self):
+        """ retrieve the access_token and access_token_secret stored locally. """
+
+        if not self.creds_store:
+            return
+
+        creds = {}
+        if os.path.isfile(self.creds_store):
+            with open(self.creds_store, 'r') as creds_store_file:
+                try:
+                    creds = json.load(creds_store_file, encoding='utf-8')
+                except ValueError:
+                    pass
+
+        if 'access_token' in creds:
+            self._access_token = creds['access_token']
+        if 'access_token_secret' in creds:
+            self.access_token_secret = creds['access_token_secret']
+
+    def clear_stored_creds(self):
+        """ Clear the file containing stored creds. """
+
+        if not self.creds_store:
+            return
+
+        with open(self.creds_store, 'w+') as creds_store_file:
+            creds_store_file.write('')
+
+
     def get_access_token(self, oauth_verifier=None):
         """ Uses the access authentication link to get an access token """
 
@@ -493,20 +507,7 @@ class OAuth_3Leg(OAuth):
             ('oauth_verifier', self.oauth_verifier)
         ]
 
-        # params = OrderedDict()
-        # params["oauth_consumer_key"] = self.consumer_key
-        # params['oauth_token'] = self.request_token
-        # params["oauth_timestamp"] = self.generate_timestamp()
-        # params["oauth_nonce"] = self.generate_nonce()
-        # params["oauth_signature_method"] = self.signature_method
-        # params['oauth_verifier'] = oauth_verifier
-        # params["oauth_callback"] = self.callback
-
         sign_key = self.get_sign_key(self.consumer_secret, self.request_token_secret)
-        # sign_key = self.get_sign_key(None, self.request_token_secret)
-        # print "request_token_secret:", self.request_token_secret
-
-        # print "SIGNING WITH KEY:", repr(sign_key)
 
         access_token_url = self.authentication['oauth1']['access']
         access_token_url = self.add_params_sign("POST", access_token_url, params, sign_key)
@@ -529,5 +530,7 @@ class OAuth_3Leg(OAuth):
         except:
             raise UserWarning("Could not parse access_token or access_token_secret in response from %s : %s" \
                 % (repr(access_response.request.url), UrlUtils.beautify_response(access_response)))
+
+        self.store_access_creds()
 
         return self._access_token, self.access_token_secret

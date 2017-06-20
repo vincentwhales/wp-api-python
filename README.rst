@@ -28,7 +28,7 @@ Wordpress version 4.7+ comes pre-installed with REST API v2, so you don't need t
 You should have the following plugins installed on your wordpress site:
 
 - **WP REST API** (only required for WP < v4.7, recommended version: 2.0+)
-- **WP REST API - OAuth 1.0a Server** (optional, if you want oauth. https://github.com/WP-API/OAuth1)
+- **WP REST API - OAuth 1.0a Server** (optional, if you want oauth within the wordpress API. https://github.com/WP-API/OAuth1)
 - **WP REST API - Meta Endpoints** (optional)
 - **WooCommerce** (optional, if you want to use the WooCommerce API)
 
