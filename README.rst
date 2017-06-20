@@ -1,7 +1,9 @@
 Wordpress API - Python Client
 ===============================
 
-A Python wrapper for the Wordpress REST API v1-2 that also works on the WooCommerce REST API v1-3 and WooCommerce WP-API v1-2.
+A Python wrapper for the Wordpress and WooCommerce REST APIs with oAuth1a 3leg support.
+
+Supports the Wordpress REST API v1-2, WooCommerce REST API v1-3 and WooCommerce WP-API v1-2 (with automatic OAuth3a handling).
 Forked from the excellent Woocommerce API written by Claudio Sanches and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
 
 I created this fork because I prefer the way that the wc-api-python client interfaces with
@@ -15,6 +17,7 @@ Roadmap
 
 - [x] Create initial fork
 - [x] Implement 3-legged OAuth on Wordpress client
+- [ ] Better local storage of OAuth creds to stop unnecessary API keys being generated
 - [ ] Implement iterator for conveniant access to API items
 
 Requirements
