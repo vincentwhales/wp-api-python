@@ -46,53 +46,6 @@ class Auth(object):
     def api_namespace(self):
         return self.requester.api
 
-    @classmethod
-    def normalize_params(cls, params):
-        """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
-        if isinstance(params, dict):
-            params = params.items()
-        params = \
-            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
-                for key, value in params]
-
-        # print "NORMALIZED: %s\n" % str(params.keys())
-        # resposne = urlencode(params)
-        response = params
-        # print "RESPONSE: %s\n" % str(resposne.split('&'))
-        return response
-
-    @classmethod
-    def sorted_params(cls, params):
-        """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
-
-        if isinstance(params, dict):
-            params = params.items()
-
-        # return sorted(params)
-        ordered = []
-        base_keys = sorted(set(k.split('[')[0] for k, v in params))
-        keys_seen = []
-        for base in base_keys:
-            for key, value in params:
-                if key == base or key.startswith(base + '['):
-                    if key not in keys_seen:
-                        ordered.append((key, value))
-                        keys_seen.append(key)
-
-        return ordered
-
-    @classmethod
-    def normalize_str(cls, string):
-        return quote(string, '')
-
-    @classmethod
-    def flatten_params(cls, params):
-        if isinstance(params, dict):
-            params = params.items()
-        params = cls.normalize_params(params)
-        params = cls.sorted_params(params)
-        return "&".join(["%s=%s"%(key, value) for key, value in params])
-
     def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with added Auth params """
         return endpoint_url
@@ -117,7 +70,7 @@ class BasicAuth(Auth):
             })
             endpoint_url = UrlUtils.substitute_query(
                 endpoint_url,
-                self.flatten_params(endpoint_params)
+                UrlUtils.flatten_params(endpoint_params)
             )
         return endpoint_url
 
@@ -167,7 +120,7 @@ class OAuth(Auth):
             # for key, value in parse_qsl(urlparse_result.query):
             #     params += [(key, value)]
 
-        params = self.sorted_params(params)
+        params = UrlUtils.sorted_params(params)
 
         params_without_signature = []
         for key, value in params:
@@ -177,7 +130,7 @@ class OAuth(Auth):
         signature = self.generate_oauth_signature(method, params_without_signature, url, sign_key)
         params = params_without_signature + [("oauth_signature", signature)]
 
-        query_string = self.flatten_params(params)
+        query_string = UrlUtils.flatten_params(params)
 
         return UrlUtils.substitute_query(url, query_string)
 
@@ -198,7 +151,7 @@ class OAuth(Auth):
     @classmethod
     def get_signature_base_string(cls, method, params, url):
         base_request_uri = quote(UrlUtils.substitute_query(url), "")
-        query_string = quote( cls.flatten_params(params), '~')
+        query_string = quote( UrlUtils.flatten_params(params), '~')
         return "&".join([method, base_request_uri, query_string])
 
     def generate_oauth_signature(self, method, params, url, key=None):

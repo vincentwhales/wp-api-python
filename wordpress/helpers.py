@@ -36,10 +36,10 @@ class StrUtils(object):
             string = string[len(head):]
         return string
 
-
     @classmethod
     def decapitate(cls, *args, **kwargs):
         return cls.remove_head(*args, **kwargs)
+
 
 class SeqUtils(object):
     @classmethod
@@ -144,8 +144,6 @@ class UrlUtils(object):
     def join_components(cls, components):
         return reduce(posixpath.join, SeqUtils.filter_true(components))
 
-    # TODO: move flatten_params, sorted_params, normalize_params out of auth into here
-
     @staticmethod
     def get_value_like_as_php(val):
         """ Prepare value for quote """
@@ -184,3 +182,48 @@ class UrlUtils(object):
             query=urlparse_result.query,
             fragment=urlparse_result.fragment
         ))
+
+    @classmethod
+    def normalize_str(cls, string):
+        """ Normalize string for the purposes of url query parameters. """
+        return quote(string, '')
+
+    @classmethod
+    def normalize_params(cls, params):
+        """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+        if isinstance(params, dict):
+            params = params.items()
+        params = \
+            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
+                for key, value in params]
+
+        response = params
+        return response
+
+    @classmethod
+    def sorted_params(cls, params):
+        """ Sort parameters. works with RFC 5849 logic. params is a list of key, value pairs """
+
+        if isinstance(params, dict):
+            params = params.items()
+
+        # return sorted(params)
+        ordered = []
+        base_keys = sorted(set(k.split('[')[0] for k, v in params))
+        keys_seen = []
+        for base in base_keys:
+            for key, value in params:
+                if key == base or key.startswith(base + '['):
+                    if key not in keys_seen:
+                        ordered.append((key, value))
+                        keys_seen.append(key)
+
+        return ordered
+
+    @classmethod
+    def flatten_params(cls, params):
+        if isinstance(params, dict):
+            params = params.items()
+        params = cls.normalize_params(params)
+        params = cls.sorted_params(params)
+        return "&".join(["%s=%s"%(key, value) for key, value in params])

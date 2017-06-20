@@ -171,7 +171,7 @@ class WordpressTestCase(unittest.TestCase):
             for key in keys:
                 params[key] = ''
 
-            params = auth.OAuth.sorted_params(params)
+            params = UrlUtils.sorted_params(params)
             ordered = [key for key, value in params]
             self.assertEqual(ordered, expected)
 
@@ -584,7 +584,7 @@ class OAuthTestcases(unittest.TestCase):
         )
 
     def test_flatten_params(self):
-        flattened_params = OAuth.flatten_params(self.twitter_params_raw)
+        flattened_params = UrlUtils.flatten_params(self.twitter_params_raw)
         expected_flattened_params = self.twitter_param_string
         self.assertEqual(flattened_params, expected_flattened_params)
 
