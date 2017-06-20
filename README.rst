@@ -222,9 +222,9 @@ Changelog
 
 1.2.2 - 2017/06/16
 ~~~~~~~~~~~~~~~~~~
- - support basic auth without https
- - rename oauth module to auth (since auth covers oauth and basic auth)
- - tested with latest versions of WP and WC
+- support basic auth without https
+- rename oauth module to auth (since auth covers oauth and basic auth)
+- tested with latest versions of WP and WC
 
 1.2.1 - 2016/12/13
 ~~~~~~~~~~~~~~~~~~

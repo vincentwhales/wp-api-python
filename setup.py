@@ -6,7 +6,6 @@ from setuptools import setup
 import os
 import re
 
-
 # Get version from __init__.py file
 VERSION = ""
 with open("wordpress/__init__.py", "r") as fd:
@@ -36,9 +35,10 @@ setup(
     platforms=['any'],
     install_requires=[
         "requests",
-        "ordereddict"
+        "ordereddict",
+        "beautifulsoup4"
     ],
-    classifiers=(
+    classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Natural Language :: English",
@@ -50,5 +50,6 @@ setup(
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Topic :: Software Development :: Libraries :: Python Modules"
-    ),
+    ],
+    keywords='python wordpress woocommerce api development'
 )
