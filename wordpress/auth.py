@@ -10,9 +10,9 @@ from time import time
 from random import randint
 from hmac import new as HMAC
 from hashlib import sha1, sha256
-from base64 import b64encode
+# from base64 import b64encode
 import binascii
-import webbrowser
+# import webbrowser
 import requests
 from bs4 import BeautifulSoup
 
@@ -93,11 +93,37 @@ class Auth(object):
         params = cls.sorted_params(params)
         return "&".join(["%s=%s"%(key, value) for key, value in params])
 
+    def get_oauth_url(self, endpoint_url, method):
+        """ Returns the URL with added Auth params """
+        return endpoint_url
+
+    def get_auth(self):
+        """ Returns the auth parameter used in requests """
+        pass
+
 class BasicAuth(Auth):
     def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
         super(BasicAuth, self).__init__(requester)
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
+        self.query_string_auth = kwargs.get("query_string_auth", False)
+
+    def get_oauth_url(self, endpoint_url, method):
+        if self.query_string_auth:
+            endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
+            endpoint_params.update({
+                "consumer_key": self.consumer_key,
+                "consumer_secret": self.consumer_secret
+            })
+            endpoint_url = UrlUtils.substitute_query(
+                endpoint_url,
+                self.flatten_params(endpoint_params)
+            )
+        return endpoint_url
+
+    def get_auth(self):
+        if not self.query_string_auth:
+            return (self.consumer_key, self.consumer_secret)
 
 
 class OAuth(Auth):
@@ -164,7 +190,7 @@ class OAuth(Auth):
         ]
 
     def get_oauth_url(self, endpoint_url, method):
-        """ Returns the URL with OAuth params """
+        """ Returns the URL with added Auth params """
         params = self.get_params()
 
         return self.add_params_sign(method, endpoint_url, params)

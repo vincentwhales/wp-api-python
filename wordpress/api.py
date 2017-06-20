@@ -25,6 +25,10 @@ class API(object):
             consumer_secret=consumer_secret,
         )
         if kwargs.get('basic_auth'):
+            if 'query_string_auth' in kwargs:
+                auth_kwargs.update(dict(
+                    query_string_auth=kwargs.get("query_string_auth")
+                ))
             self.auth = BasicAuth(**auth_kwargs)
         else:
             auth_kwargs.update(dict(
@@ -84,20 +88,8 @@ class API(object):
         """ Do requests """
 
         endpoint_url = self.requester.endpoint_url(endpoint)
-        # endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
-        endpoint_params = {}
-        auth = None
-
-        if self.requester.is_ssl or isinstance(self.auth, BasicAuth):
-            if self.requester.query_string_auth:
-                endpoint_params.update({
-                    "consumer_key": self.auth.consumer_key,
-                    "consumer_secret": self.auth.consumer_secret
-                })
-            else:
-                auth = (self.auth.consumer_key, self.auth.consumer_secret)
-        else:
-            endpoint_url = self.auth.get_oauth_url(endpoint_url, method)
+        endpoint_url = self.auth.get_oauth_url(endpoint_url, method)
+        auth = self.auth.get_auth()
 
         if data is not None:
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
@@ -106,7 +98,6 @@ class API(object):
             method=method,
             url=endpoint_url,
             auth=auth,
-            params=endpoint_params,
             data=data
         )
 

@@ -144,6 +144,8 @@ class UrlUtils(object):
     def join_components(cls, components):
         return reduce(posixpath.join, SeqUtils.filter_true(components))
 
+    # TODO: move flatten_params, sorted_params, normalize_params out of auth into here
+
     @staticmethod
     def get_value_like_as_php(val):
         """ Prepare value for quote """

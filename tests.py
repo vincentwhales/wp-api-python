@@ -351,7 +351,57 @@ class TransportTestcases(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.request.url, 'https://woo.test:8888/wp-json/wp/v2/posts')
 
+class BasicAuthTestcases(unittest.TestCase):
+    def setUp(self):
+        self.base_url = "http://localhost:8888/wp-api/"
+        self.api_name = 'wc-api'
+        self.api_ver = 'v3'
+        self.endpoint = 'products/26'
+        self.signature_method = "HMAC-SHA1"
+
+        self.consumer_key = "ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        self.consumer_secret = "cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        self.api_params = dict(
+            url=self.base_url,
+            consumer_key=self.consumer_key,
+            consumer_secret=self.consumer_secret,
+            basic_auth=True,
+            api=self.api_name,
+            version=self.api_ver
+        )
+
+    def test_endpoint_url(self):
+        basic_api_params = dict(**self.api_params)
+        api = API(
+            **basic_api_params
+        )
+        endpoint_url = api.requester.endpoint_url(self.endpoint)
+        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+        self.assertEqual(
+            endpoint_url,
+            UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, self.endpoint])
+        )
+
+    def test_query_string_endpoint_url(self):
+        query_string_api_params = dict(**self.api_params)
+        query_string_api_params.update(dict(query_string_auth=True))
+        api = API(
+            **query_string_api_params
+        )
+        endpoint_url = api.requester.endpoint_url(self.endpoint)
+        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+        expected_endpoint_url = '%s?consumer_key=%s&consumer_secret=%s' % (self.endpoint, self.consumer_key, self.consumer_secret)
+        expected_endpoint_url = UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, expected_endpoint_url])
+        self.assertEqual(
+            endpoint_url,
+            expected_endpoint_url
+        )
+        endpoint_url = api.requester.endpoint_url(self.endpoint)
+        endpoint_url = api.auth.get_oauth_url(endpoint_url, 'GET')
+
+
 class OAuthTestcases(unittest.TestCase):
+
 
     def setUp(self):
         self.base_url = "http://localhost:8888/wordpress/"
