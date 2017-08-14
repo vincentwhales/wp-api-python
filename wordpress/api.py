@@ -89,10 +89,10 @@ class API(object):
             headers = response.headers
 
         requester_api_url = self.requester.api_url
-        if hasattr(response, 'links'):
+        if hasattr(response, 'links') and response.links:
             links = response.links
-            if 'https://api.w.org/' in links:
-                header_api_url = links['https://api.w.org/'].get('url', '')
+            first_link_key = list(links)[0]
+            header_api_url = links[first_link_key].get('url', '')
 
             if header_api_url and requester_api_url\
             and header_api_url != requester_api_url:
