@@ -90,7 +90,8 @@ class API(object):
         )
 
         assert \
-            response.status_code in [200, 201], "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
+            response.status_code in [200, 201], \
+            "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
                 response.request.url,
                 str(response.status_code),
                 UrlUtils.beautify_response(response),

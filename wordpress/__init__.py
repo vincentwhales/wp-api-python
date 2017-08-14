@@ -3,7 +3,7 @@
 """
 wordpress
 ~~~~~~~~~
-A Python wrapper for Wordpress REST API.
+A Python wrapper for Wordpress and WooCommerce REST APIs.
 
 :copyright: (c) 2015 by WooThemes.
 :license: MIT, see LICENSE for details.
@@ -11,7 +11,7 @@ A Python wrapper for Wordpress REST API.
 
 __title__ = "wordpress"
 __version__ = "1.2.2"
-__author__ = "Claudio Sanches @ WooThemes"
+__author__ = "Claudio Sanches @ WooThemes, forked by Derwent"
 __license__ = "MIT"
 
 __default_api_version__ = "wp/v2"

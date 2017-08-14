@@ -25,7 +25,7 @@ setup(
     version=VERSION,
     description="A Python wrapper for the Wordpress and WooCommerce REST APIs with oAuth1a 3leg support",
     long_description=README,
-    author="Claudio Sanches @ WooThemes",
+    author="Claudio Sanches @ Automattic , forked by Derwent @ Laserphile",
     url="https://github.com/woocommerce/wc-api-python",
     license="MIT License",
     packages=[
