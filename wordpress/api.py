@@ -10,7 +10,7 @@ from requests import request
 from json import dumps as jsonencode
 from wordpress.auth import OAuth, OAuth_3Leg, BasicAuth
 from wordpress.transport import API_Requests_Wrapper
-from wordpress.helpers import UrlUtils
+from wordpress.helpers import UrlUtils, StrUtils
 
 class API(object):
     """ API Class """
@@ -72,6 +72,49 @@ class API(object):
     def callback(self):
         return self.auth.callback
 
+    def request_post_mortem(self, response=None):
+        """
+        Attempt to diagnose what went wrong in a request
+        """
+
+        reason = None
+        remedy = None
+
+        request_url = ""
+        if hasattr(response, 'request') and hasattr(response.request, 'url'):
+            request_url = response.request.url
+
+        headers = {}
+        if hasattr(response, 'headers'):
+            headers = response.headers
+
+        requester_api_url = self.requester.api_url
+        if hasattr(response, 'links'):
+            links = response.links
+            if 'https://api.w.org/' in links:
+                header_api_url = links['https://api.w.org/'].get('url', '')
+
+            if header_api_url and requester_api_url\
+            and header_api_url != requester_api_url:
+                reason = "hostname mismatch. %s != %s" % (
+                    header_api_url, requester_api_url
+                )
+                header_url = StrUtils.eviscerate(header_api_url, '/')
+                header_url = StrUtils.eviscerate(header_url, self.requester.api)
+                remedy = "try changing url to %s" % header_url
+
+        msg = "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
+            request_url,
+            str(response.status_code),
+            UrlUtils.beautify_response(response),
+            str(headers)
+        )
+        if reason:
+            msg += "\nMost likely because of %s" % reason
+        if remedy:
+            msg += "\n%s" % remedy
+        raise UserWarning(msg)
+
     def __request(self, method, endpoint, data):
         """ Do requests """
 
@@ -89,14 +132,8 @@ class API(object):
             data=data
         )
 
-        assert \
-            response.status_code in [200, 201], \
-            "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
-                response.request.url,
-                str(response.status_code),
-                UrlUtils.beautify_response(response),
-                str(response.headers)
-            )
+        if response.status_code not in [200, 201]:
+            self.request_post_mortem(response)
 
         return response
 

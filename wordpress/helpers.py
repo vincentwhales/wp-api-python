@@ -40,6 +40,10 @@ class StrUtils(object):
     def decapitate(cls, *args, **kwargs):
         return cls.remove_head(*args, **kwargs)
 
+    @classmethod
+    def eviscerate(cls, *args, **kwargs):
+        return cls.remove_tail(*args, **kwargs)
+
 
 class SeqUtils(object):
     @classmethod

@@ -36,7 +36,8 @@ setup(
     install_requires=[
         "requests",
         "ordereddict",
-        "beautifulsoup4"
+        "beautifulsoup4",
+        'lxml'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

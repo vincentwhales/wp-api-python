@@ -82,9 +82,12 @@ class API_Requests_Wrapper(object):
             timeout=self.timeout,
         )
         request_kwargs.update(kwargs)
-        if auth is not None: request_kwargs['auth'] = auth
-        if params is not None: request_kwargs['params'] = params
-        if data is not None: request_kwargs['data'] = data
+        if auth is not None:
+            request_kwargs['auth'] = auth
+        if params is not None:
+            request_kwargs['params'] = params
+        if data is not None:
+            request_kwargs['data'] = data
         return self.session.request(
             **request_kwargs
         )

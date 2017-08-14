@@ -308,6 +308,26 @@ class OAuth_3Leg(OAuth):
 
         return self._request_token, self.request_token_secret
 
+    def parse_login_form_error(self, response, exc, **kwargs):
+        """
+        If unable to parse login form, try to determine which error is present
+        """
+        login_form_soup = BeautifulSoup(response.text, 'lxml')
+        if response.status_code != 200:
+            raise UserWarning("Response was not a 200, it was a %s. original error: %s" \
+                % (str(response.status_code)), str(exc))
+        error = login_form_soup.select_one('div#login_error')
+        if error and error.stripped_strings:
+            for stripped_string in error.stripped_strings:
+                if "invalid token" in stripped_string.lower():
+                    raise UserWarning("Invalid token: %s" % repr(kwargs.get('token')))
+                elif "invalid username" in stripped_string.lower():
+                    raise UserWarning("Invalid username: %s" % repr(kwargs.get('username')))
+                elif "the password you entered" in stripped_string.lower():
+                    raise UserWarning("Invalid password: %s" % repr(kwargs.get('password')))
+            raise UserWarning("could not parse login form error. %s " % str(error))
+        raise UserWarning("unknown error: %s" % str(exc))
+
     def get_form_info(self, response, form_id):
         """ parses a form specified by a given form_id in the response,
         extracts form data and form action """
@@ -367,19 +387,17 @@ class OAuth_3Leg(OAuth):
         authorize_session = requests.Session()
 
         login_form_response = authorize_session.get(authorize_url)
+        login_form_params = {
+            'username':wp_user,
+            'password':wp_pass,
+            'token':request_token
+        }
         try:
             login_form_action, login_form_data = self.get_form_info(login_form_response, 'loginform')
-        except AssertionError, e:
-            #try to parse error
-            login_form_soup = BeautifulSoup(login_form_response.text, 'lxml')
-            error = login_form_soup.select_one('div#login_error')
-            if error and "invalid token" in error.string.lower():
-                raise UserWarning("Invalid token: %s" % repr(request_token))
-            else:
-                raise UserWarning(
-                    "could not parse login form. Site is misbehaving. Original error: %s " \
-                    % str(e)
-                )
+        except AssertionError, exc:
+            self.parse_login_form_error(
+                login_form_response, exc, **login_form_params
+            )
 
         for name, values in login_form_data.items():
             if name == 'log':
@@ -397,23 +415,10 @@ class OAuth_3Leg(OAuth):
         confirmation_response = authorize_session.post(login_form_action, data=login_form_data, allow_redirects=True)
         try:
             authorize_form_action, authorize_form_data = self.get_form_info(confirmation_response, 'oauth1_authorize_form')
-        except AssertionError, e:
-            #try to parse error
-            # print "STATUS_CODE: %s" % str(confirmation_response.status_code)
-            if confirmation_response.status_code != 200:
-                raise UserWarning("Response was not a 200, it was a %s. original error: %s" \
-                    % (str(confirmation_response.status_code)), str(e))
-            # print "HEADERS: %s" % str(confirmation_response.headers)
-            confirmation_soup = BeautifulSoup(confirmation_response.text, 'lxml')
-            error = confirmation_soup.select_one('div#login_error')
-            # print "ERROR: %s" % repr(error)
-            if error and error.string and "invalid token" in error.string.lower():
-                raise UserWarning("Invalid token: %s" % repr(request_token))
-            else:
-                raise UserWarning(
-                    "could not parse login form. Site is misbehaving. Original error: %s " \
-                    % str(e)
-                )
+        except AssertionError, exc:
+            self.parse_login_form_error(
+                confirmation_response, exc, **login_form_params
+            )
 
         for name, values in authorize_form_data.items():
             if name == 'wp-submit':
