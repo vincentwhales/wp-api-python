@@ -407,7 +407,7 @@ class OAuth_3Leg(OAuth):
             confirmation_soup = BeautifulSoup(confirmation_response.text, 'lxml')
             error = confirmation_soup.select_one('div#login_error')
             # print "ERROR: %s" % repr(error)
-            if error and "invalid token" in error.string.lower():
+            if error and error.string and "invalid token" in error.string.lower():
                 raise UserWarning("Invalid token: %s" % repr(request_token))
             else:
                 raise UserWarning(
