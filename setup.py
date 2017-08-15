@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """ Setup module """
 
-from setuptools import setup
 import os
 import re
+from setuptools import setup
 
 # Get version from __init__.py file
 VERSION = ""
