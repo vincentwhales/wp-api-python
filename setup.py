@@ -23,10 +23,13 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 setup(
     name="wordpress-api",
     version=VERSION,
-    description="A Python wrapper for the Wordpress and WooCommerce REST APIs with oAuth1a 3leg support",
+    description=(
+        "A Python wrapper for the Wordpress and WooCommerce REST APIs "
+        "with oAuth1a 3leg support"
+    ),
     long_description=README,
-    author="Claudio Sanches @ Automattic , forked by Derwent @ Laserphile",
-    url="https://github.com/woocommerce/wc-api-python",
+    author="Claudio Sanches @ Automattic, forked by Derwent @ Laserphile",
+    url="https://github.com/derwentx/wp-api-python",
     license="MIT License",
     packages=[
         "wordpress"

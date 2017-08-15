@@ -275,17 +275,25 @@ class OAuth_3Leg(OAuth):
         response = self.requester.request('GET', discovery_url)
         response_json = response.json()
 
-        assert \
-            response_json['authentication'], \
-            "resopnse should include location of authentication resources, resopnse: %s" \
-                % UrlUtils.beautify_response(response)
+        if not 'authentication' in response_json:
+            raise UserWarning(
+                (
+                    "Resopnse does not include location of authentication resources.\n"
+                    "Resopnse: %s\n"
+                    "Please check you have configured the Wordpress OAuth1 plugin correctly."
+                ) % (response)
+            )
 
         self._authentication = response_json['authentication']
 
         return self._authentication
 
     def get_request_token(self):
-        """ Uses the request authentication link to get an oauth_token for requesting an access token """
+        """
+        Uses the request authentication link to get an oauth_token for
+        requesting an access token
+        """
+
         assert self.consumer_key, "need a valid consumer_key for this step"
 
         params = self.get_params()
