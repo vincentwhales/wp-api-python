@@ -6,7 +6,7 @@ Wordpress API Class
 
 __title__ = "wordpress-api"
 
-from requests import request
+# from requests import request
 from json import dumps as jsonencode
 from wordpress.auth import OAuth, OAuth_3Leg, BasicAuth
 from wordpress.transport import API_Requests_Wrapper
@@ -80,37 +80,60 @@ class API(object):
         reason = None
         remedy = None
 
+        response_json = {}
+        try:
+            response_json = response.json()
+        except ValueError:
+            pass
+
+        import pudb; pudb.set_trace()
+
+        if 'code' in response_json or 'message' in response_json:
+            reason = " - ".join([
+                response_json.get(key) for key in ['code', 'message'] \
+                if key in response_json
+            ])
+
+        request_body = {}
         request_url = ""
-        if hasattr(response, 'request') and hasattr(response.request, 'url'):
-            request_url = response.request.url
+        if hasattr(response, 'request'):
+            if hasattr(response.request, 'url'):
+                request_url = response.request.url
+            if hasattr(response.request, 'body'):
+                request_body = response.request.body
 
-        headers = {}
+        response_headers = {}
         if hasattr(response, 'headers'):
-            headers = response.headers
+            response_headers = response.headers
 
-        requester_api_url = self.requester.api_url
-        if hasattr(response, 'links') and response.links:
-            links = response.links
-            first_link_key = list(links)[0]
-            header_api_url = links[first_link_key].get('url', '')
+        if not reason:
+            requester_api_url = self.requester.api_url
+            if hasattr(response, 'links') and response.links:
+                links = response.links
+                first_link_key = list(links)[0]
+                header_api_url = links[first_link_key].get('url', '')
+                if header_api_url:
+                    header_api_url = StrUtils.eviscerate(header_api_url, '/')
 
-            if header_api_url and requester_api_url\
-            and header_api_url != requester_api_url:
-                reason = "hostname mismatch. %s != %s" % (
-                    header_api_url, requester_api_url
-                )
-                header_url = StrUtils.eviscerate(header_api_url, '/')
-                header_url = StrUtils.eviscerate(header_url, self.requester.api)
-                remedy = "try changing url to %s" % header_url
+                if header_api_url and requester_api_url\
+                and header_api_url != requester_api_url:
+                    reason = "hostname mismatch. %s != %s" % (
+                        header_api_url, requester_api_url
+                    )
+                    header_url = StrUtils.eviscerate(header_api_url, '/')
+                    header_url = StrUtils.eviscerate(header_url, self.requester.api)
+                    header_url = StrUtils.eviscerate(header_url, '/')
+                    remedy = "try changing url to %s" % header_url
 
-        msg = "API call to %s returned \nCODE: %s\n%s \nHEADERS: %s" % (
+        msg = "API call to %s returned \nCODE: %s\nRESPONSE:%s \nHEADERS: %s\nREQ_BODY:%s" % (
             request_url,
             str(response.status_code),
             UrlUtils.beautify_response(response),
-            str(headers)
+            str(response_headers),
+            str(request_body)
         )
         if reason:
-            msg += "\nMost likely because of %s" % reason
+            msg += "\nBecause of %s" % reason
         if remedy:
             msg += "\n%s" % remedy
         raise UserWarning(msg)

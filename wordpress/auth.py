@@ -321,26 +321,39 @@ class OAuth_3Leg(OAuth):
         If unable to parse login form, try to determine which error is present
         """
         login_form_soup = BeautifulSoup(response.text, 'lxml')
-        if response.status_code != 200:
-            raise UserWarning("Response was not a 200, it was a %s. original error: %s" \
-                % (str(response.status_code)), str(exc))
-        error = login_form_soup.select_one('div#login_error')
-        if error and error.stripped_strings:
-            for stripped_string in error.stripped_strings:
-                if "invalid token" in stripped_string.lower():
-                    raise UserWarning("Invalid token: %s" % repr(kwargs.get('token')))
-                elif "invalid username" in stripped_string.lower():
-                    raise UserWarning("Invalid username: %s" % repr(kwargs.get('username')))
-                elif "the password you entered" in stripped_string.lower():
-                    raise UserWarning("Invalid password: %s" % repr(kwargs.get('password')))
-            raise UserWarning("could not parse login form error. %s " % str(error))
-        raise UserWarning("unknown error: %s" % str(exc))
+        if response.status_code == 500:
+            error = login_form_soup.select_one('body#error-page')
+            if error and error.stripped_strings:
+                for stripped_string in error.stripped_strings:
+                    if "plase solve this math problem" in stripped_string.lower():
+                        raise UserWarning("Can't log in if form has capcha ... yet")
+                raise UserWarning("could not parse login form error. %s " % str(error))
+        if response.status_code == 200:
+            error = login_form_soup.select_one('div#login_error')
+            if error and error.stripped_strings:
+                for stripped_string in error.stripped_strings:
+                    if "invalid token" in stripped_string.lower():
+                        raise UserWarning("Invalid token: %s" % repr(kwargs.get('token')))
+                    elif "invalid username" in stripped_string.lower():
+                        raise UserWarning("Invalid username: %s" % repr(kwargs.get('username')))
+                    elif "the password you entered" in stripped_string.lower():
+                        raise UserWarning("Invalid password: %s" % repr(kwargs.get('password')))
+                raise UserWarning("could not parse login form error. %s " % str(error))
+        raise UserWarning(
+            "Login form response was code %s. original error: \n%s" % \
+            (str(response.status_code), repr(exc))
+        )
 
     def get_form_info(self, response, form_id):
         """ parses a form specified by a given form_id in the response,
         extracts form data and form action """
 
-        assert response.status_code is 200
+        assert \
+            response.status_code is 200, \
+            "login form response should be 200, not %s\n%s" % (
+                response.status_code,
+                response.text
+            )
         response_soup = BeautifulSoup(response.text, "lxml")
         form_soup = response_soup.select_one('form#%s' % form_id)
         assert \
