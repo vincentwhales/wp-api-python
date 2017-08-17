@@ -90,7 +90,7 @@ class API(object):
 
         if 'code' in response_json or 'message' in response_json:
             reason = " - ".join([
-                response_json.get(key) for key in ['code', 'message'] \
+                str(response_json.get(key)) for key in ['code', 'message', 'data'] \
                 if key in response_json
             ])
 
