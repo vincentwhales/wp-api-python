@@ -7,3 +7,4 @@ dist/
 run.py
 run3.py
 *.orig
+.eggs/*
