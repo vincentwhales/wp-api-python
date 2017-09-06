@@ -88,12 +88,6 @@ class API(object):
 
         # import pudb; pudb.set_trace()
 
-        if 'code' in response_json or 'message' in response_json:
-            reason = " - ".join([
-                str(response_json.get(key)) for key in ['code', 'message', 'data'] \
-                if key in response_json
-            ])
-
         request_body = {}
         request_url = ""
         if hasattr(response, 'request'):
@@ -101,6 +95,16 @@ class API(object):
                 request_url = response.request.url
             if hasattr(response.request, 'body'):
                 request_body = response.request.body
+
+        if 'code' in response_json or 'message' in response_json:
+            reason = " - ".join([
+                str(response_json.get(key)) for key in ['code', 'message', 'data'] \
+                if key in response_json
+            ])
+
+            if 'code' == 'rest_user_invalid_email':
+                remedy = "Try checking the email %s doesn't already exist" % \
+                request_body.get('email')
 
         response_headers = {}
         if hasattr(response, 'headers'):
