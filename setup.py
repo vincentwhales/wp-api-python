@@ -42,6 +42,13 @@ setup(
         "beautifulsoup4",
         'lxml'
     ],
+    setup_requires=[
+        'pytest-runner',
+    ],
+    tests_require=[
+        'httmock',
+        'pytest'
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
