@@ -17,7 +17,7 @@ Roadmap
 
 - [x] Create initial fork
 - [x] Implement 3-legged OAuth on Wordpress client
-- [ ] Better local storage of OAuth creds to stop unnecessary API keys being generated
+- [x] Better local storage of OAuth creds to stop unnecessary API keys being generated
 - [ ] Implement iterator for conveniant access to API items
 
 Requirements
@@ -224,6 +224,11 @@ Example of returned data:
 
 Changelog
 ---------
+
+1.2.3 - 2017/09/07
+~~~~~~~~~~~~~~~~~~
+- Better local storage of OAuth creds to stop unnecessary API keys being generated
+- Improve parsing of API errors to display much more useful error information
 
 1.2.2 - 2017/06/16
 ~~~~~~~~~~~~~~~~~~
