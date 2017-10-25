@@ -6,17 +6,20 @@ Wordpress OAuth1.0a Class
 
 __title__ = "wordpress-auth"
 
-import os
-from time import time
-from random import randint
-from hmac import new as HMAC
-from hashlib import sha1, sha256
-import json
 # from base64 import b64encode
 import binascii
+import json
+import logging
+import os
+from hashlib import sha1, sha256
+from hmac import new as HMAC
+from random import randint
+from time import time
+
 # import webbrowser
 import requests
 from bs4 import BeautifulSoup
+from wordpress.helpers import UrlUtils
 
 try:
     from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
@@ -31,7 +34,6 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
-from wordpress.helpers import UrlUtils
 
 
 class Auth(object):
@@ -39,6 +41,7 @@ class Auth(object):
 
     def __init__(self, requester):
         self.requester = requester
+        self.logger = logging.getLogger(__name__)
 
     @property
     def api_version(self):
@@ -257,6 +260,8 @@ class OAuth_3Leg(OAuth):
     def get_auth_url(self, endpoint_url, method):
         """ Returns the URL with OAuth params """
         assert self.access_token, "need a valid access token for this step"
+        assert self.access_token_secret, \
+            "need a valid access token secret for this step"
 
         params = self.get_params()
         params += [
@@ -265,6 +270,8 @@ class OAuth_3Leg(OAuth):
         ]
 
         sign_key = self.get_sign_key(self.consumer_secret, self.access_token_secret)
+
+        self.logger.debug('sign_key: %s' % sign_key )
 
         return self.add_params_sign(method, endpoint_url, params, sign_key)
 
@@ -305,6 +312,7 @@ class OAuth_3Leg(OAuth):
         request_token_url = self.add_params_sign("GET", request_token_url, params)
 
         response = self.requester.get(request_token_url)
+        self.logger.debug('get_request_token response: %s' % response.text)
         resp_content = parse_qs(response.text)
 
         try:
@@ -539,6 +547,8 @@ class OAuth_3Leg(OAuth):
         access_token_url = self.add_params_sign("POST", access_token_url, params, sign_key)
 
         access_response = self.requester.post(access_token_url)
+
+        self.logger.debug('access_token response: %s' % access_response.text)
 
         assert \
             access_response.status_code == 200, \

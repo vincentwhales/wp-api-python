@@ -106,6 +106,10 @@ class API(object):
                 remedy = "Try checking the email %s doesn't already exist" % \
                 request_body.get('email')
 
+            elif 'code' == 'json_oauth1_consumer_mismatch':
+                remedy = "Try deleting the cached credentials at %s" % \
+                self.auth.creds_store
+
         response_headers = {}
         if hasattr(response, 'headers'):
             response_headers = response.headers

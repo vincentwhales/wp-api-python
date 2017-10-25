@@ -1,22 +1,23 @@
 """ API Tests """
-import unittest
-import sys
-import pdb
 import functools
+import logging
+import pdb
+import random
+import sys
 import traceback
+import unittest
 from collections import OrderedDict
+from copy import copy
 from tempfile import mkstemp
 
-from httmock import all_requests, HTTMock, urlmatch
 import wordpress
-from wordpress import auth
-from wordpress import __default_api_version__, __default_api__
-from wordpress.helpers import UrlUtils, SeqUtils, StrUtils
-from wordpress.transport import API_Requests_Wrapper
+from wordpress import __default_api__, __default_api_version__, auth
 from wordpress.api import API
 from wordpress.auth import OAuth
-import random
-import platform
+from wordpress.helpers import SeqUtils, StrUtils, UrlUtils
+from wordpress.transport import API_Requests_Wrapper
+
+from httmock import HTTMock, all_requests, urlmatch
 
 try:
     from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
@@ -32,12 +33,16 @@ def debug_on(*exceptions):
     def decorator(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            prev_root = copy(logging.root)
             try:
+                logging.basicConfig(level=logging.DEBUG)
                 return f(*args, **kwargs)
             except exceptions:
                 info = sys.exc_info()
                 traceback.print_exception(*info)
                 pdb.post_mortem(info[2])
+            finally:
+                logging.root = prev_root
         return wrapper
     return decorator
 
@@ -807,7 +812,7 @@ class WCApiTestCases(unittest.TestCase):
     """ Tests for WC API V3 """
     def setUp(self):
         self.api_params = {
-            'url':'http://ich.local:8888/woocommerce/',
+            'url':'http://localhost:18080/wptest/',
             'api':'wc-api',
             'version':'v3',
             'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
@@ -871,7 +876,7 @@ class WCApiTestCasesNew(unittest.TestCase):
     """ Tests for New WC API """
     def setUp(self):
         self.api_params = {
-            'url':'http://ich.local:8888/woocommerce/',
+            'url':'http://localhost:18080/wptest/',
             'api':'wp-json',
             'version':'wc/v2',
             'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
@@ -914,32 +919,31 @@ class WCApiTestCasesNew(unittest.TestCase):
 @unittest.skip("Should only work on my machine")
 class WPAPITestCases(unittest.TestCase):
     def setUp(self):
-        self.creds_store = '~/wc-api-creds.json'
+        self.creds_store = '~/wc-api-creds-test.json'
         self.api_params = {
-            'url':'http://ich.local:8888/woocommerce/',
+            'url':'http://localhost:18080/wptest/',
             'api':'wp-json',
-            'version':'wp/v1',
-            'consumer_key':'ox0p2NZSOja8',
-            'consumer_secret':'6Ye77tGlYgxjCexn1m7zGs0GLYmmoGXeHM82jgmw3kqffNLe',
+            'version':'wp/v2',
+            'consumer_key':'tYG1tAoqjBEM',
+            'consumer_secret':'s91fvylVrqChwzzDbEJHEWyySYtAmlIsqqYdjka1KyVDdAyB',
             'callback':'http://127.0.0.1/oauth1_callback',
-            'wp_user':'woocommerce',
-            'wp_pass':'woocommerce',
+            'wp_user':'wptest',
+            'wp_pass':'gZ*gZk#v0t5$j#NQ@9',
             'oauth1a_3leg':True,
             'creds_store': self.creds_store
         }
+        self.wpapi = API(**self.api_params)
+        self.wpapi.auth.clear_stored_creds()
 
-    @debug_on()
     def test_APIGet(self):
-        wpapi = API(**self.api_params)
-        wpapi.auth.clear_stored_creds()
-        response = wpapi.get('users')
+        response = self.wpapi.get('users')
         self.assertIn(response.status_code, [200,201])
         response_obj = response.json()
-        self.assertEqual(response_obj[0]['name'], 'woocommerce')
+        self.assertEqual(response_obj[0]['name'], self.api_params['wp_user'])
 
+    @debug_on()
     def test_APIGetWithSimpleQuery(self):
-        wpapi = API(**self.api_params)
-        response = wpapi.get('media?page=2&per_page=2')
+        response = self.wpapi.get('media?page=2&per_page=2')
         # print UrlUtils.beautify_response(response)
         self.assertIn(response.status_code, [200,201])
 

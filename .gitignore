@@ -8,3 +8,5 @@ run.py
 run3.py
 *.orig
 .eggs/*
+.cache/v/cache/lastfailed
+pylint_report.txt
