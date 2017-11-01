@@ -131,6 +131,7 @@ class OAuth(Auth):
             # for key, value in parse_qsl(urlparse_result.query):
             #     params += [(key, value)]
 
+        params = UrlUtils.unique_params(params)
         params = UrlUtils.sorted_params(params)
 
         params_without_signature = []

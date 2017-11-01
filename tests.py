@@ -6,14 +6,16 @@ import random
 import sys
 import traceback
 import unittest
+import platform
 from collections import OrderedDict
 from copy import copy
+from time import time
 from tempfile import mkstemp
 
 import wordpress
 from wordpress import __default_api__, __default_api_version__, auth
 from wordpress.api import API
-from wordpress.auth import OAuth
+from wordpress.auth import OAuth, Auth
 from wordpress.helpers import SeqUtils, StrUtils, UrlUtils
 from wordpress.transport import API_Requests_Wrapper
 
@@ -45,6 +47,9 @@ def debug_on(*exceptions):
                 logging.root = prev_root
         return wrapper
     return decorator
+
+CURRENT_TIMESTAMP = int(time())
+SHITTY_NONCE = ""
 
 class WordpressTestCase(unittest.TestCase):
     """Test case for the client methods."""
@@ -299,6 +304,16 @@ class HelperTestcase(unittest.TestCase):
         result = UrlUtils.del_query_singular(self.test_url, 'filter[limit]')
         expected = "http://ich.local:8888/woocommerce/wc-api/v3/products?oauth_consumer_key=ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&oauth_nonce=c4f2920b0213c43f2e8d3d3333168ec4a22222d1&oauth_signature=3ibOjMuhj6JGnI43BQZGniigHh8%3D&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1481601370&page=2"
         self.assertEqual(result, expected)
+
+    def test_url_remove_default_port(self):
+        self.assertEqual(
+            UrlUtils.remove_default_port('http://www.gooogle.com:80/'),
+            'http://www.gooogle.com/'
+        )
+        self.assertEqual(
+            UrlUtils.remove_default_port('http://www.gooogle.com:18080/'),
+            'http://www.gooogle.com:18080/'
+        )
 
     def test_seq_filter_true(self):
         self.assertEquals(
@@ -840,11 +855,12 @@ class OAuth3LegTestcases(unittest.TestCase):
             'YYYYYYYYYYYY'
         )
 
-# @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
-@unittest.skip("Should only work on my machine")
-class WCApiTestCases(unittest.TestCase):
+@unittest.skipIf(platform.uname()[1] != "Derwents-MBP.lan", "should only work on my machine")
+class WCApiTestCasesLegacy(unittest.TestCase):
     """ Tests for WC API V3 """
     def setUp(self):
+        Auth.force_timestamp = CURRENT_TIMESTAMP
+        Auth.force_nonce = SHITTY_NONCE
         self.api_params = {
             'url':'http://localhost:18080/wptest/',
             'api':'wc-api',
@@ -858,7 +874,6 @@ class WCApiTestCases(unittest.TestCase):
         response = wcapi.get('products')
         # print UrlUtils.beautify_response(response)
         self.assertIn(response.status_code, [200,201])
-
         response_obj = response.json()
         self.assertIn('products', response_obj)
         self.assertEqual(len(response_obj['products']), 10)
@@ -905,10 +920,12 @@ class WCApiTestCases(unittest.TestCase):
 
         wcapi.put('products/%s' % (product_id), {"product":{"title":original_title}})
 
-@unittest.skip("Should only work on my machine")
-class WCApiTestCasesNew(unittest.TestCase):
+@unittest.skipIf(platform.uname()[1] != "Derwents-MBP.lan", "should only work on my machine")
+class WCApiTestCases(unittest.TestCase):
     """ Tests for New wp-json/wc/v2 API """
     def setUp(self):
+        Auth.force_timestamp = CURRENT_TIMESTAMP
+        Auth.force_nonce = SHITTY_NONCE
         self.api_params = {
             'url':'http://localhost:18080/wptest/',
             'api':'wp-json',
@@ -918,6 +935,7 @@ class WCApiTestCasesNew(unittest.TestCase):
             'callback':'http://127.0.0.1/oauth1_callback',
         }
 
+    # @debug_on()
     def test_APIGet(self):
         wcapi = API(**self.api_params)
         per_page = 10
@@ -941,14 +959,16 @@ class WCApiTestCasesNew(unittest.TestCase):
         request_params = UrlUtils.get_query_dict_singular(response.request.url)
         response_obj = response.json()
         self.assertEqual(response_obj['name'], str(nonce))
-        self.assertEqual(request_params['filter[limit]'], str(5))
+        self.assertEqual(request_params['per_page'], '5')
 
         wcapi.put('products/%s' % (product_id), {"name":original_title})
 
-@unittest.skip("Should only work on my machine")
-class WCApiTestCasesNew3Leg(unittest.TestCase):
+@unittest.skip("these simply don't work for some reason")
+class WCApiTestCases3Leg(unittest.TestCase):
     """ Tests for New wp-json/wc/v2 API with 3-leg """
     def setUp(self):
+        Auth.force_timestamp = CURRENT_TIMESTAMP
+        Auth.force_nonce = SHITTY_NONCE
         self.api_params = {
             'url':'http://localhost:18080/wptest/',
             'api':'wp-json',
@@ -961,7 +981,7 @@ class WCApiTestCasesNew3Leg(unittest.TestCase):
             'wp_pass':'gZ*gZk#v0t5$j#NQ@9'
         }
 
-    @debug_on()
+    # @debug_on()
     def test_api_get_3leg(self):
         wcapi = API(**self.api_params)
         per_page = 10
@@ -970,10 +990,11 @@ class WCApiTestCasesNew3Leg(unittest.TestCase):
         response_obj = response.json()
         self.assertEqual(len(response_obj), per_page)
 
-# @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
-@unittest.skip("Should only work on my machine")
+@unittest.skipIf(platform.uname()[1] != "Derwents-MBP.lan", "should only work on my machine")
 class WPAPITestCases(unittest.TestCase):
     def setUp(self):
+        Auth.force_timestamp = CURRENT_TIMESTAMP
+        Auth.force_nonce = SHITTY_NONCE
         self.creds_store = '~/wc-api-creds-test.json'
         self.api_params = {
             'url':'http://localhost:18080/wptest/',
@@ -991,10 +1012,10 @@ class WPAPITestCases(unittest.TestCase):
         self.wpapi.auth.clear_stored_creds()
 
     def test_APIGet(self):
-        response = self.wpapi.get('users')
+        response = self.wpapi.get('users/me')
         self.assertIn(response.status_code, [200,201])
         response_obj = response.json()
-        self.assertEqual(response_obj[0]['name'], self.api_params['wp_user'])
+        self.assertEqual(response_obj['name'], self.api_params['wp_user'])
 
     def test_APIGetWithSimpleQuery(self):
         response = self.wpapi.get('media?page=2&per_page=2')

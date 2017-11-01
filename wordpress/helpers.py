@@ -282,9 +282,26 @@ class UrlUtils(object):
         return ordered
 
     @classmethod
+    def unique_params(cls, params):
+        if isinstance(params, dict):
+            params = params.items()
+
+        if not params:
+            return params
+
+        unique_params = []
+        seen_keys = []
+        for key, value in params:
+            if key not in seen_keys:
+                unique_params.append((key, value))
+                seen_keys.append(key)
+        return unique_params
+
+    @classmethod
     def flatten_params(cls, params):
         if isinstance(params, dict):
             params = params.items()
         params = cls.normalize_params(params)
         params = cls.sorted_params(params)
+        params = cls.unique_params(params)
         return "&".join(["%s=%s"%(key, value) for key, value in params])

@@ -35,6 +35,9 @@ class API(object):
         elif kwargs.get('oauth1a_3leg'):
             auth_class = OAuth_3Leg
 
+        if kwargs.get('version', '').startswith('wc') and kwargs.get('oauth1a_3leg'):
+            self.logger.warn("WooCommerce JSON Api does not seem to support 3leg")
+
         self.auth = auth_class(**auth_kwargs)
 
     @property

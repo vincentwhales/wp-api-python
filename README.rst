@@ -143,6 +143,8 @@ Setup for the new WP REST API integration (WooCommerce 2.6 or later):
         version="wc/v2",
         callback='http://127.0.0.1/oauth1_callback'
     )
+    
+Note: oauth1a 3legged works with Wordpress but not with WooCommerce. However oauth1a signing still works.
 
 Options
 ~~~~~~~
