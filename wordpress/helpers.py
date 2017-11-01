@@ -250,9 +250,12 @@ class UrlUtils(object):
         """ Normalize parameters. works with RFC 5849 logic. params is a list of key, value pairs """
         if isinstance(params, dict):
             params = params.items()
-        params = \
-            [(cls.normalize_str(key), cls.normalize_str(UrlUtils.get_value_like_as_php(value))) \
-                for key, value in params]
+        params = [
+            (
+                cls.normalize_str(key),
+                cls.normalize_str(UrlUtils.get_value_like_as_php(value))
+            ) for key, value in params
+        ]
 
         response = params
         return response
@@ -264,16 +267,17 @@ class UrlUtils(object):
         if isinstance(params, dict):
             params = params.items()
 
+        if not params:
+            return params
         # return sorted(params)
         ordered = []
-        base_keys = sorted(set(k.split('[')[0] for k, v in params))
-        keys_seen = []
-        for base in base_keys:
-            for key, value in params:
-                if key == base or key.startswith(base + '['):
-                    if key not in keys_seen:
-                        ordered.append((key, value))
-                        keys_seen.append(key)
+        params_sorting = []
+        for i, (key, value) in enumerate(params):
+            base_key = key.split('[')[0]
+            params_sorting.append((base_key, value, i, key))
+
+        for _, value, _, key in sorted(params_sorting):
+            ordered.append((key, value))
 
         return ordered
 

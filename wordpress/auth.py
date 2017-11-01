@@ -15,9 +15,13 @@ from hashlib import sha1, sha256
 from hmac import new as HMAC
 from random import randint
 from time import time
+from pprint import pformat
 
 # import webbrowser
 import requests
+from requests.auth import HTTPBasicAuth
+from requests_oauthlib import OAuth1
+
 from bs4 import BeautifulSoup
 from wordpress.helpers import UrlUtils
 
@@ -39,9 +43,10 @@ except ImportError:
 class Auth(object):
     """ Boilerplate for handling authentication stuff. """
 
-    def __init__(self, requester):
+    def __init__(self, requester, **kwargs):
         self.requester = requester
         self.logger = logging.getLogger(__name__)
+        self.query_string_auth = kwargs.pop('query_string_auth', True)
 
     @property
     def api_version(self):
@@ -57,14 +62,13 @@ class Auth(object):
 
     def get_auth(self):
         """ Returns the auth parameter used in requests """
-        pass
+        return HTTPBasicAuth(self.consumer_key, self.consumer_secret)
 
 class BasicAuth(Auth):
     def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
-        super(BasicAuth, self).__init__(requester)
+        super(BasicAuth, self).__init__(requester, **kwargs)
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
-        self.query_string_auth = kwargs.get("query_string_auth", False)
 
     def get_auth_url(self, endpoint_url, method):
         if self.query_string_auth:
@@ -81,7 +85,7 @@ class BasicAuth(Auth):
 
     def get_auth(self):
         if not self.query_string_auth:
-            return (self.consumer_key, self.consumer_secret)
+            return HTTPBasicAuth(self.consumer_key, self.consumer_secret)
 
 
 class OAuth(Auth):
@@ -92,12 +96,14 @@ class OAuth(Auth):
     """ API Class """
 
     def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
-        super(OAuth, self).__init__(requester)
+        super(OAuth, self).__init__(requester, **kwargs)
+        if not self.query_string_auth:
+            raise UserWarning("Header Auth not supported for OAuth")
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
-        self.signature_method = kwargs.get('signature_method', 'HMAC-SHA1')
-        self.force_timestamp = kwargs.get('force_timestamp')
-        self.force_nonce = kwargs.get('force_nonce')
+        self.signature_method = kwargs.pop('signature_method', 'HMAC-SHA1')
+        self.force_timestamp = kwargs.pop('force_timestamp', None)
+        self.force_nonce = kwargs.pop('force_nonce', None)
 
     def get_sign_key(self, consumer_secret, token_secret=None):
         "gets consumer_secret and turns it into a string suitable for signing"
@@ -132,7 +138,13 @@ class OAuth(Auth):
             if key != "oauth_signature":
                 params_without_signature.append((key, value))
 
+        self.logger.debug('sorted_params before sign: %s' % pformat(params_without_signature) )
+
         signature = self.generate_oauth_signature(method, params_without_signature, url, sign_key)
+
+        self.logger.debug('signature: %s' % signature )
+
+
         params = params_without_signature + [("oauth_signature", signature)]
 
         query_string = UrlUtils.flatten_params(params)
@@ -155,9 +167,18 @@ class OAuth(Auth):
 
     @classmethod
     def get_signature_base_string(cls, method, params, url):
-        base_request_uri = quote(UrlUtils.substitute_query(url), "")
-        query_string = quote( UrlUtils.flatten_params(params), '~')
-        return "&".join([method, base_request_uri, query_string])
+        # remove default port
+        url = UrlUtils.remove_default_port(url)
+        # ensure scheme is lowercase
+        url = UrlUtils.lower_scheme(url)
+        # remove query string parameters
+        url = UrlUtils.substitute_query(url)
+        base_request_uri = quote(url, "")
+        query_string = UrlUtils.flatten_params(params)
+        query_string = quote( query_string, '~')
+        return "%s&%s&%s" % (
+            method.upper(), base_request_uri, query_string
+        )
 
     def generate_oauth_signature(self, method, params, url, key=None):
         """ Generate OAuth Signature """
@@ -208,15 +229,15 @@ class OAuth_3Leg(OAuth):
     def __init__(self, requester, consumer_key, consumer_secret, callback, **kwargs):
         super(OAuth_3Leg, self).__init__(requester, consumer_key, consumer_secret, **kwargs)
         self.callback = callback
-        self.wp_user = kwargs.get('wp_user')
-        self.wp_pass = kwargs.get('wp_pass')
-        self._creds_store = kwargs.get('creds_store')
+        self.wp_user = kwargs.pop('wp_user', None)
+        self.wp_pass = kwargs.pop('wp_pass', None)
+        self._creds_store = kwargs.pop('creds_store', None)
         self._authentication = None
-        self._request_token = kwargs.get('request_token')
+        self._request_token = kwargs.pop('request_token', None)
         self.request_token_secret = None
         self._oauth_verifier = None
-        self._access_token = kwargs.get('access_token')
-        self.access_token_secret = kwargs.get('access_token_secret')
+        self._access_token = kwargs.pop('access_token', None)
+        self.access_token_secret = kwargs.pop('access_token_secret', None)
 
     @property
     def authentication(self):
@@ -317,9 +338,13 @@ class OAuth_3Leg(OAuth):
 
         try:
             self._request_token = resp_content['oauth_token'][0]
+        except:
+            raise UserWarning("Could not parse request_token in response from %s : %s" \
+                % (repr(response.request.url), UrlUtils.beautify_response(response)))
+        try:
             self.request_token_secret = resp_content['oauth_token_secret'][0]
         except:
-            raise UserWarning("Could not parse request_token or request_token_secret in response from %s : %s" \
+            raise UserWarning("Could not parse request_token_secret in response from %s : %s" \
                 % (repr(response.request.url), UrlUtils.beautify_response(response)))
 
         return self._request_token, self.request_token_secret

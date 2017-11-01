@@ -9,9 +9,11 @@ __title__ = "wordpress-api"
 # from requests import request
 import logging
 from json import dumps as jsonencode
-from wordpress.auth import OAuth, OAuth_3Leg, BasicAuth
+
+from wordpress.auth import BasicAuth, OAuth, OAuth_3Leg
+from wordpress.helpers import StrUtils, UrlUtils
 from wordpress.transport import API_Requests_Wrapper
-from wordpress.helpers import UrlUtils, StrUtils
+
 
 class API(object):
     """ API Class """
@@ -27,15 +29,13 @@ class API(object):
         )
         auth_kwargs.update(kwargs)
 
+        auth_class = OAuth
         if kwargs.get('basic_auth'):
-            self.auth = BasicAuth(**auth_kwargs)
-        else:
-            if kwargs.get('oauth1a_3leg'):
-                if 'callback' not in auth_kwargs:
-                    raise TypeError("callback url not specified")
-                self.auth = OAuth_3Leg( **auth_kwargs )
-            else:
-                self.auth = OAuth( **auth_kwargs )
+            auth_class = BasicAuth
+        elif kwargs.get('oauth1a_3leg'):
+            auth_class = OAuth_3Leg
+
+        self.auth = auth_class(**auth_kwargs)
 
     @property
     def url(self):
@@ -170,6 +170,7 @@ class API(object):
         return response
 
     # TODO add kwargs option for headers
+
     def get(self, endpoint):
         """ Get requests """
         return self.__request("GET", endpoint, None)
