@@ -62,15 +62,19 @@ class Auth(object):
 
     def get_auth(self):
         """ Returns the auth parameter used in requests """
-        return HTTPBasicAuth(self.consumer_key, self.consumer_secret)
+        pass
 
 class BasicAuth(Auth):
+    """ Does not perform any signing, just logs in with oauth creds """
     def __init__(self, requester, consumer_key, consumer_secret, **kwargs):
         super(BasicAuth, self).__init__(requester, **kwargs)
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
+        self.user_auth = kwargs.pop('user_auth', None)
+        self.wp_user = kwargs.pop('wp_user', None)
+        self.wp_pass = kwargs.pop('wp_pass', None)
 
-    def get_auth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method, **kwargs):
         if self.query_string_auth:
             endpoint_params = UrlUtils.get_query_dict_singular(endpoint_url)
             endpoint_params.update({
@@ -84,11 +88,14 @@ class BasicAuth(Auth):
         return endpoint_url
 
     def get_auth(self):
+        if self.user_auth:
+            return HTTPBasicAuth(self.wp_user, self.wp_pass)
         if not self.query_string_auth:
             return HTTPBasicAuth(self.consumer_key, self.consumer_secret)
 
 
 class OAuth(Auth):
+    """ Signs string with oauth consumer_key and consumer_secret """
     oauth_version = '1.0'
     force_nonce = None
     force_timestamp = None
@@ -118,7 +125,7 @@ class OAuth(Auth):
             key = "%s&%s" % (consumer_secret, token_secret)
         return key
 
-    def add_params_sign(self, method, url, params, sign_key=None):
+    def add_params_sign(self, method, url, params, sign_key=None, **kwargs):
         """ Adds the params to a given url, signs the url with sign_key if provided,
         otherwise generates sign_key automatically and returns a signed url """
         if isinstance(params, dict):
@@ -130,6 +137,10 @@ class OAuth(Auth):
             params += parse_qsl(urlparse_result.query)
             # for key, value in parse_qsl(urlparse_result.query):
             #     params += [(key, value)]
+
+        # headers = kwargs.get('headers', {})
+        # if headers:
+        #     params += headers.items()
 
         params = UrlUtils.unique_params(params)
         params = UrlUtils.sorted_params(params)
@@ -160,11 +171,11 @@ class OAuth(Auth):
             ("oauth_timestamp", self.generate_timestamp()),
         ]
 
-    def get_auth_url(self, endpoint_url, method):
+    def get_auth_url(self, endpoint_url, method, **kwargs):
         """ Returns the URL with added Auth params """
         params = self.get_params()
 
-        return self.add_params_sign(method, endpoint_url, params)
+        return self.add_params_sign(method, endpoint_url, params, **kwargs)
 
     @classmethod
     def get_signature_base_string(cls, method, params, url):

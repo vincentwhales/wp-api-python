@@ -50,6 +50,41 @@ class SeqUtils(object):
     def filter_true(cls, seq):
         return [item for item in seq if item]
 
+
+    @classmethod
+    def filter_unique_true(cls, list_a):
+        response = []
+        for i in list_a:
+            if i and i not in response:
+                response.append(i)
+        return response
+
+    @classmethod
+    def combine_two_ordered_dicts(cls, dict_a, dict_b):
+        """
+        Combine OrderedDict a with b by starting with A and overwriting with items from b.
+        Attempt to preserve order
+        """
+        if not dict_a:
+            return dict_b if dict_b else OrderedDict()
+        if not dict_b:
+            return dict_a
+        response = OrderedDict(dict_a.items())
+        for key, value in dict_b.items():
+            response[key] = value
+        return response
+
+    @classmethod
+    def combine_ordered_dicts(cls, *args):
+        """
+        Combine all dict arguments overwriting former with items from latter.
+        Attempt to preserve order
+        """
+        response = OrderedDict()
+        for arg in args:
+            response = cls.combine_two_ordered_dicts(response, arg)
+        return response
+
 class UrlUtils(object):
 
     reg_netloc = r'(?P<hostname>[^:]+)(:(?P<port>\d+))?'

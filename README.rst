@@ -18,7 +18,7 @@ Roadmap
 - [x] Create initial fork
 - [x] Implement 3-legged OAuth on Wordpress client
 - [x] Better local storage of OAuth credentials to stop unnecessary API keys being generated
-- [ ] Support easy image upload to WC Api
+- [x] Support image upload to WC Api
 - [ ] Better handling of timeouts with a back-off
 - [ ] Implement iterator for convenient access to API items
 
@@ -80,7 +80,9 @@ Check out the Wordpress API endpoints and data that can be manipulated in http:/
 Setup
 -----
 
-Setup for the old Wordpress API:
+Wordpress API with Basic authentication:
+----
+(Note: requires Basic Authentication plugin)
 
 .. code-block:: python
 
@@ -88,16 +90,18 @@ Setup for the old Wordpress API:
 
     wpapi = API(
         url="http://example.com",
-        consumer_key="XXXXXXXXXXXX",
-        consumer_secret="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         api="wp-json",
-        version=None,
+        version='wp/v2',
         wp_user="XXXX",
-        wp_pass="XXXX"
+        wp_pass="XXXX",
+        basic_auth = True,
+        user_auth = True,
     )
 
-Setup for the new WP REST API v2:
-(Note: the username and password are required so that it can fill out the oauth request token form automatically for you)
+WP REST API v2:
+----
+(Note: the username and password are required so that it can fill out the oauth request token form automatically for you.
+Requires OAuth 1.0a plugin. )
 
 .. code-block:: python
 
@@ -115,7 +119,8 @@ Setup for the new WP REST API v2:
         creds_store="~/.wc-api-creds.json"
     )
 
-Setup for the old WooCommerce API v3:
+Legacy WooCommerce API v3:
+----
 
 .. code-block:: python
 
@@ -129,7 +134,10 @@ Setup for the old WooCommerce API v3:
         version="v3"
     )
 
-Setup for the new WP REST API integration (WooCommerce 2.6 or later):
+New WC REST API:
+----
+Note: oauth1a 3legged works with Wordpress but not with WooCommerce. However oauth1a signing still works.
+If you try to do oauth1a_3leg with WooCommerce it just says "consumer_key not valid", even if it is valid.
 
 .. code-block:: python
 
@@ -143,8 +151,7 @@ Setup for the new WP REST API integration (WooCommerce 2.6 or later):
         version="wc/v2",
         callback='http://127.0.0.1/oauth1_callback'
     )
-    
-Note: oauth1a 3legged works with Wordpress but not with WooCommerce. However oauth1a signing still works.
+
 
 Options
 ~~~~~~~
@@ -211,6 +218,25 @@ OPTIONS
 
 - ``.options(endpoint)``
 
+Upload an image
+-----
+
+(Note: this only works on WP API with basic auth)
+
+.. code-block:: python
+
+    assert os.path.exists(img_path), "img should exist"
+    data = open(img_path, 'rb').read()
+    filename = os.path.basename(img_path)
+    _, extension = os.path.splitext(filename)
+    headers = {
+        'cache-control': 'no-cache',
+        'content-disposition': 'attachment; filename=%s' % filename,
+        'content-type': 'image/%s' % extension
+    }
+    return wcapi.post(self.endpoint_singular, data, headers=headers)
+
+
 Response
 --------
 
@@ -236,6 +262,11 @@ Example of returned data:
 
 Changelog
 ---------
+
+1.2.4 - 2017/10/01
+~~~~~~~~~~~~~~~~~~
+- Support for image upload
+- More accurate documentation of WP authentication methods
 
 1.2.3 - 2017/09/07
 ~~~~~~~~~~~~~~~~~~

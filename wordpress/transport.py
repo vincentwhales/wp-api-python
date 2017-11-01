@@ -75,6 +75,10 @@ class API_Requests_Wrapper(object):
         }
         if data is not None:
             headers["content-type"] = "application/json;charset=utf-8"
+        headers = SeqUtils.combine_ordered_dicts(
+            headers,
+            kwargs.get('headers', {})
+        )
 
         request_kwargs = dict(
             method=method,
@@ -90,7 +94,9 @@ class API_Requests_Wrapper(object):
             request_kwargs['params'] = params
         if data is not None:
             request_kwargs['data'] = data
-        self.logger.debug("request_kwargs:\n%s" % pformat(request_kwargs))
+        self.logger.debug("request_kwargs:\n%s" % pformat([
+            (key, repr(value)[:1000]) for key, value in request_kwargs.items()
+        ]))
         response = self.session.request(
             **request_kwargs
         )

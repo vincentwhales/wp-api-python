@@ -142,7 +142,7 @@ class API(object):
             str(response.status_code),
             UrlUtils.beautify_response(response),
             str(response_headers),
-            str(request_body)
+            str(request_body)[:1000]
         )
         if reason:
             msg += "\nBecause of %s" % reason
@@ -150,21 +150,24 @@ class API(object):
             msg += "\n%s" % remedy
         raise UserWarning(msg)
 
-    def __request(self, method, endpoint, data):
+    def __request(self, method, endpoint, data, **kwargs):
         """ Do requests """
 
         endpoint_url = self.requester.endpoint_url(endpoint)
-        endpoint_url = self.auth.get_auth_url(endpoint_url, method)
+        endpoint_url = self.auth.get_auth_url(endpoint_url, method, **kwargs)
         auth = self.auth.get_auth()
 
-        if data is not None:
+        content_type = kwargs.get('headers', {}).get('content-type', 'application/json')
+
+        if data is not None and content_type.startswith('application/json'):
             data = jsonencode(data, ensure_ascii=False).encode('utf-8')
 
         response = self.requester.request(
             method=method,
             url=endpoint_url,
             auth=auth,
-            data=data
+            data=data,
+            **kwargs
         )
 
         if response.status_code not in [200, 201, 202]:
@@ -174,22 +177,22 @@ class API(object):
 
     # TODO add kwargs option for headers
 
-    def get(self, endpoint):
+    def get(self, endpoint, **kwargs):
         """ Get requests """
-        return self.__request("GET", endpoint, None)
+        return self.__request("GET", endpoint, None, **kwargs)
 
-    def post(self, endpoint, data):
+    def post(self, endpoint, data, **kwargs):
         """ POST requests """
-        return self.__request("POST", endpoint, data)
+        return self.__request("POST", endpoint, data, **kwargs)
 
-    def put(self, endpoint, data):
+    def put(self, endpoint, data, **kwargs):
         """ PUT requests """
-        return self.__request("PUT", endpoint, data)
+        return self.__request("PUT", endpoint, data, **kwargs)
 
-    def delete(self, endpoint):
+    def delete(self, endpoint, **kwargs):
         """ DELETE requests """
-        return self.__request("DELETE", endpoint, None)
+        return self.__request("DELETE", endpoint, None, **kwargs)
 
-    def options(self, endpoint):
+    def options(self, endpoint, **kwargs):
         """ OPTIONS requests """
-        return self.__request("OPTIONS", endpoint, None)
+        return self.__request("OPTIONS", endpoint, None, **kwargs)
