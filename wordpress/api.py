@@ -7,6 +7,7 @@ Wordpress API Class
 __title__ = "wordpress-api"
 
 # from requests import request
+import logging
 from json import dumps as jsonencode
 from wordpress.auth import OAuth, OAuth_3Leg, BasicAuth
 from wordpress.transport import API_Requests_Wrapper
@@ -16,7 +17,7 @@ class API(object):
     """ API Class """
 
     def __init__(self, url, consumer_key, consumer_secret, **kwargs):
-
+        self.logger = logging.getLogger(__name__)
         self.requester = API_Requests_Wrapper(url=url, **kwargs)
 
         auth_kwargs = dict(
@@ -163,11 +164,12 @@ class API(object):
             data=data
         )
 
-        if response.status_code not in [200, 201]:
+        if response.status_code not in [200, 201, 202]:
             self.request_post_mortem(response)
 
         return response
 
+    # TODO add kwargs option for headers
     def get(self, endpoint):
         """ Get requests """
         return self.__request("GET", endpoint, None)

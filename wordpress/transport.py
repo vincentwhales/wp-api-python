@@ -6,8 +6,13 @@ Wordpress Requests Class
 
 __title__ = "wordpress-requests"
 
-from requests import Request, Session
+import logging
 from json import dumps as jsonencode
+from pprint import pformat
+
+from requests import Request, Session
+from wordpress import __default_api__, __default_api_version__, __version__
+from wordpress.helpers import SeqUtils, StrUtils, UrlUtils
 
 try:
     from urllib.parse import urlencode, quote, unquote, parse_qsl, urlparse, urlunparse
@@ -17,14 +22,11 @@ except ImportError:
     from urlparse import parse_qsl, urlparse, urlunparse
     from urlparse import ParseResult as URLParseResult
 
-from wordpress import __version__
-from wordpress import __default_api_version__
-from wordpress import __default_api__
-from wordpress.helpers import SeqUtils, UrlUtils, StrUtils
 
 class API_Requests_Wrapper(object):
     """ provides a wrapper for making requests that handles session info """
     def __init__(self, url, **kwargs):
+        self.logger = logging.getLogger(__name__)
         self.url = url
         self.api = kwargs.get("api", __default_api__)
         self.api_version = kwargs.get("version", __default_api_version__)
@@ -88,9 +90,31 @@ class API_Requests_Wrapper(object):
             request_kwargs['params'] = params
         if data is not None:
             request_kwargs['data'] = data
-        return self.session.request(
+        self.logger.debug("request_kwargs:\n%s" % pformat(request_kwargs))
+        response = self.session.request(
             **request_kwargs
         )
+        self.logger.debug("response_code:\n%s" % pformat(response.status_code))
+        try:
+            response_json = response.json()
+            self.logger.debug("response_json:\n%s" % (pformat(response_json)[:1000]))
+        except ValueError:
+            response_text = response.text
+            self.logger.debug("response_text:\n%s" % (response_text[:1000]))
+        response_headers = {}
+        if hasattr(response, 'headers'):
+            response_headers = response.headers
+        self.logger.debug("response_headers:\n%s" % pformat(response_headers))
+        response_links = {}
+        if hasattr(response, 'links') and response.links:
+            response_links = response.links
+        self.logger.debug("response_links:\n%s" % pformat(response_links))
+
+
+
+
+
+        return response
 
     def get(self, *args, **kwargs):
         return self.request("GET", *args, **kwargs)

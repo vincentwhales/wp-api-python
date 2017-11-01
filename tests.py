@@ -373,19 +373,21 @@ class BasicAuthTestcases(unittest.TestCase):
             consumer_secret=self.consumer_secret,
             basic_auth=True,
             api=self.api_name,
-            version=self.api_ver
+            version=self.api_ver,
+            query_string_auth=False,
         )
 
     def test_endpoint_url(self):
-        basic_api_params = dict(**self.api_params)
         api = API(
-            **basic_api_params
+            **self.api_params
         )
         endpoint_url = api.requester.endpoint_url(self.endpoint)
         endpoint_url = api.auth.get_auth_url(endpoint_url, 'GET')
         self.assertEqual(
             endpoint_url,
-            UrlUtils.join_components([self.base_url, self.api_name, self.api_ver, self.endpoint])
+            UrlUtils.join_components([
+                self.base_url, self.api_name, self.api_ver, self.endpoint
+            ])
         )
 
     def test_query_string_endpoint_url(self):
@@ -590,16 +592,48 @@ class OAuthTestcases(unittest.TestCase):
         )
 
     def test_flatten_params(self):
-        flattened_params = UrlUtils.flatten_params(self.twitter_params_raw)
-        expected_flattened_params = self.twitter_param_string
-        self.assertEqual(flattened_params, expected_flattened_params)
+        self.assertEqual(
+            UrlUtils.flatten_params(self.twitter_params_raw),
+            self.twitter_param_string
+        )
 
-        twitter_base_string = OAuth.get_signature_base_string(
+    def test_sorted_params(self):
+        # Example given in oauth.net:
+        oauthnet_example_sorted = [
+            ('a', '1'),
+            ('c', 'hi%%20there'),
+            ('f', '25'),
+            ('f', '50'),
+            ('f', 'a'),
+            ('z', 'p'),
+            ('z', 't')
+        ]
+
+        oauthnet_example = copy(oauthnet_example_sorted)
+        random.shuffle(oauthnet_example)
+
+        # oauthnet_example_sorted = [
+        #     ('a', '1'),
+        #     ('c', 'hi%%20there'),
+        #     ('f', '25'),
+        #     ('z', 'p'),
+        # ]
+
+        self.assertEqual(
+            UrlUtils.sorted_params(oauthnet_example),
+            oauthnet_example_sorted
+        )
+
+    def test_get_signature_base_string(self):
+        twitter_param_string = OAuth.get_signature_base_string(
             self.twitter_method,
             self.twitter_params_raw,
             self.twitter_target_url
         )
-        self.assertEqual(twitter_base_string, self.twitter_signature_base_string)
+        self.assertEqual(
+            twitter_param_string,
+            self.twitter_signature_base_string
+        )
 
     # @unittest.skip("changed order of parms to fit wordpress api")
     def test_generate_oauth_signature(self):
@@ -815,8 +849,8 @@ class WCApiTestCases(unittest.TestCase):
             'url':'http://localhost:18080/wptest/',
             'api':'wc-api',
             'version':'v3',
-            'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
-            'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
+            'consumer_key':'ck_e1dd4a9c85f49b9685f7964a154eecb29af39d5a',
+            'consumer_secret':'cs_8ef3e5d21f8a0c28cd7bc4643e92111a0326b6b1',
         }
 
     def test_APIGet(self):
@@ -873,14 +907,14 @@ class WCApiTestCases(unittest.TestCase):
 
 @unittest.skip("Should only work on my machine")
 class WCApiTestCasesNew(unittest.TestCase):
-    """ Tests for New WC API """
+    """ Tests for New wp-json/wc/v2 API """
     def setUp(self):
         self.api_params = {
             'url':'http://localhost:18080/wptest/',
             'api':'wp-json',
             'version':'wc/v2',
-            'consumer_key':'ck_0297450a41484f27184d1a8a3275f9bab5b69143',
-            'consumer_secret':'cs_68ef2cf6a708e1c6b30bfb2a38dc948b16bf46c0',
+            'consumer_key':'ck_e1dd4a9c85f49b9685f7964a154eecb29af39d5a',
+            'consumer_secret':'cs_8ef3e5d21f8a0c28cd7bc4643e92111a0326b6b1',
             'callback':'http://127.0.0.1/oauth1_callback',
         }
 
@@ -903,7 +937,7 @@ class WCApiTestCasesNew(unittest.TestCase):
         product_id = first_product['id']
 
         nonce = str(random.random())
-        response = wcapi.put('products/%s?filter%%5Blimit%%5D=5' % (product_id), {"name":str(nonce)})
+        response = wcapi.put('products/%s?page=2&per_page=5' % (product_id), {"name":str(nonce)})
         request_params = UrlUtils.get_query_dict_singular(response.request.url)
         response_obj = response.json()
         self.assertEqual(response_obj['name'], str(nonce))
@@ -911,9 +945,30 @@ class WCApiTestCasesNew(unittest.TestCase):
 
         wcapi.put('products/%s' % (product_id), {"name":original_title})
 
+@unittest.skip("Should only work on my machine")
+class WCApiTestCasesNew3Leg(unittest.TestCase):
+    """ Tests for New wp-json/wc/v2 API with 3-leg """
+    def setUp(self):
+        self.api_params = {
+            'url':'http://localhost:18080/wptest/',
+            'api':'wp-json',
+            'version':'wc/v2',
+            'consumer_key':'ck_e1dd4a9c85f49b9685f7964a154eecb29af39d5a',
+            'consumer_secret':'cs_8ef3e5d21f8a0c28cd7bc4643e92111a0326b6b1',
+            'callback':'http://127.0.0.1/oauth1_callback',
+            'oauth1a_3leg': True,
+            'wp_user': 'wptest',
+            'wp_pass':'gZ*gZk#v0t5$j#NQ@9'
+        }
 
-    # def test_APIPut(self):
-
+    @debug_on()
+    def test_api_get_3leg(self):
+        wcapi = API(**self.api_params)
+        per_page = 10
+        response = wcapi.get('products')
+        self.assertIn(response.status_code, [200,201])
+        response_obj = response.json()
+        self.assertEqual(len(response_obj), per_page)
 
 # @unittest.skipIf(platform.uname()[1] != "Ich.lan", "should only work on my machine")
 @unittest.skip("Should only work on my machine")
@@ -941,7 +996,6 @@ class WPAPITestCases(unittest.TestCase):
         response_obj = response.json()
         self.assertEqual(response_obj[0]['name'], self.api_params['wp_user'])
 
-    @debug_on()
     def test_APIGetWithSimpleQuery(self):
         response = self.wpapi.get('media?page=2&per_page=2')
         # print UrlUtils.beautify_response(response)

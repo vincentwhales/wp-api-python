@@ -17,8 +17,10 @@ Roadmap
 
 - [x] Create initial fork
 - [x] Implement 3-legged OAuth on Wordpress client
-- [x] Better local storage of OAuth creds to stop unnecessary API keys being generated
-- [ ] Implement iterator for conveniant access to API items
+- [x] Better local storage of OAuth credentials to stop unnecessary API keys being generated
+- [ ] Support easy image upload to WC Api
+- [ ] Better handling of timeouts with a back-off
+- [ ] Implement iterator for convenient access to API items
 
 Requirements
 ------------
@@ -138,7 +140,8 @@ Setup for the new WP REST API integration (WooCommerce 2.6 or later):
         consumer_key="ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         consumer_secret="cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         api="wp-json",
-        version="wc/v1"
+        version="wc/v2",
+        callback='http://127.0.0.1/oauth1_callback'
     )
 
 Options
@@ -164,6 +167,8 @@ Options
 | ``basic_auth``        | ``bool``    | no       | Force Basic Authentication, can be through query string or headers (default)                                     |
 +-----------------------+-------------+----------+------------------------------------------------------------------------------------------------------------------+
 | ``query_string_auth`` | ``bool``    | no       | Use query string for Basic Authentication when ``True`` and using HTTPS, default is ``False`` which uses header  |
++-----------------------+-------------+----------+------------------------------------------------------------------------------------------------------------------+
+| ``oauth1a_3leg``      | ``string``  | no       | use oauth1a 3-legged authentication                                                                              |
 +-----------------------+-------------+----------+------------------------------------------------------------------------------------------------------------------+
 | ``creds_store``       | ``string``  | no       | JSON file where oauth verifier is stored (only used with OAuth_3Leg)                                             |
 +-----------------------+-------------+----------+------------------------------------------------------------------------------------------------------------------+

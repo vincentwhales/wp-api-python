@@ -52,6 +52,8 @@ class SeqUtils(object):
 
 class UrlUtils(object):
 
+    reg_netloc = r'(?P<hostname>[^:]+)(:(?P<port>\d+))?'
+
     @classmethod
     def get_query_list(cls, url):
         """ returns the list of queries in the url """
@@ -174,7 +176,7 @@ class UrlUtils(object):
 
     @classmethod
     def remove_port(cls, url):
-        """ Remove the port number from a URL """
+        """ Remove the port number from a URL"""
 
         urlparse_result = urlparse(url)
 
@@ -188,9 +190,60 @@ class UrlUtils(object):
         ))
 
     @classmethod
+    def remove_default_port(cls, url, defaults=None):
+        """ Remove the port number from a URL if it is a default port. """
+        if defaults is None:
+            defaults = {
+                'http':80,
+                'https':443
+            }
+
+        urlparse_result = urlparse(url)
+        match = re.match(
+            cls.reg_netloc,
+            urlparse_result.netloc
+        )
+        assert match, "netloc %s should match regex %s"
+        if match.groupdict().get('port'):
+            hostname = match.groupdict()['hostname']
+            port = int(match.groupdict()['port'])
+            scheme = urlparse_result.scheme.lower()
+
+            if defaults[scheme] == port:
+                return urlunparse(URLParseResult(
+                    scheme=urlparse_result.scheme,
+                    netloc=hostname,
+                    path=urlparse_result.path,
+                    params=urlparse_result.params,
+                    query=urlparse_result.query,
+                    fragment=urlparse_result.fragment
+                ))
+        return urlunparse(URLParseResult(
+            scheme=urlparse_result.scheme,
+            netloc=urlparse_result.netloc,
+            path=urlparse_result.path,
+            params=urlparse_result.params,
+            query=urlparse_result.query,
+            fragment=urlparse_result.fragment
+        ))
+
+    @classmethod
+    def lower_scheme(cls, url):
+        """ ensure the scheme of the url is lowercase. """
+        urlparse_result = urlparse(url)
+        return urlunparse(URLParseResult(
+            scheme=urlparse_result.scheme.lower(),
+            netloc=urlparse_result.netloc,
+            path=urlparse_result.path,
+            params=urlparse_result.params,
+            query=urlparse_result.query,
+            fragment=urlparse_result.fragment
+        ))
+
+    @classmethod
     def normalize_str(cls, string):
         """ Normalize string for the purposes of url query parameters. """
-        return quote(string, '')
+        return quote(string, '~')
 
     @classmethod
     def normalize_params(cls, params):
