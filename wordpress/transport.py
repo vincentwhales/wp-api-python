@@ -40,18 +40,23 @@ class API_Requests_Wrapper(object):
 
     @property
     def api_url(self):
-        return UrlUtils.join_components([
+        components = [
             self.url,
             self.api
-        ])
+        ]
+        return UrlUtils.join_components(components)
 
     @property
     def api_ver_url(self):
-        return UrlUtils.join_components([
+        components = [
             self.url,
             self.api,
-            self.api_version
-        ])
+        ]
+        if self.api_version != 'wp/v1':
+            components += [
+                self.api_version
+            ]
+        return UrlUtils.join_components(components)
 
     @property
     def api_ver_url_no_port(self):
@@ -61,12 +66,18 @@ class API_Requests_Wrapper(object):
         endpoint = StrUtils.decapitate(endpoint, self.api_ver_url)
         endpoint = StrUtils.decapitate(endpoint, self.api_ver_url_no_port)
         endpoint = StrUtils.decapitate(endpoint, '/')
-        return UrlUtils.join_components([
+        components = [
             self.url,
-            self.api,
-            self.api_version,
+            self.api
+        ]
+        if self.api_version != 'wp/v1':
+            components += [
+                self.api_version
+            ]
+        components += [
             endpoint
-        ])
+        ]
+        return UrlUtils.join_components(components)
 
     def request(self, method, url, auth=None, params=None, data=None, **kwargs):
         headers = {

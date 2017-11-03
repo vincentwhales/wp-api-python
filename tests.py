@@ -1008,6 +1008,22 @@ class WPAPITestCasesBasic(WPAPITestCasesBase):
         })
         self.wpapi = API(**self.api_params)
 
+class WPAPITestCasesBasicV1(WPAPITestCasesBase):
+    def setUp(self):
+        super(WPAPITestCasesBasicV1, self).setUp()
+        self.api_params.update({
+            'user_auth': True,
+            'basic_auth': True,
+            'query_string_auth': False,
+            'version': 'wp/v1'
+        })
+        self.wpapi = API(**self.api_params)
+
+    def test_get_endpoint_url(self):
+        endpoint_url = self.wpapi.requester.endpoint_url('')
+        print endpoint_url
+
+
 class WPAPITestCases3leg(WPAPITestCasesBase):
     def setUp(self):
         super(WPAPITestCases3leg, self).setUp()
