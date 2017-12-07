@@ -101,8 +101,8 @@ class API(object):
                 request_body = response.request.body
 
         if 'code' in response_json or 'message' in response_json:
-            reason = " - ".join([
-                str(response_json.get(key)) for key in ['code', 'message', 'data'] \
+            reason = u" - ".join([
+                unicode(response_json.get(key)) for key in ['code', 'message', 'data'] \
                 if key in response_json
             ])
 
