@@ -263,6 +263,10 @@ Example of returned data:
 Changelog
 ---------
 
+1.2.5 - 2017/12/07
+~~~~~~~~~~~~~~~~~~
+- Better UTF-8 support
+
 1.2.4 - 2017/10/01
 ~~~~~~~~~~~~~~~~~~
 - Support for image upload
