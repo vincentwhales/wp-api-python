@@ -315,16 +315,25 @@ class OAuth_3Leg(OAuth):
         response = self.requester.request('GET', discovery_url)
         response_json = response.json()
 
-        if not 'authentication' in response_json:
+        has_authentication_resources = True
+
+        if 'authentication' in response_json:
+            authentication = response_json['authentication']
+            if not isinstance(authentication, dict):
+                has_authentication_resources = False
+        else:
+            has_authentication_resources = False
+
+        if not has_authentication_resources:
             raise UserWarning(
                 (
                     "Resopnse does not include location of authentication resources.\n"
-                    "Resopnse: %s\n"
+                    "Resopnse: %s\n%s\n"
                     "Please check you have configured the Wordpress OAuth1 plugin correctly."
-                ) % (response)
+                ) % (response, response.text[:500])
             )
 
-        self._authentication = response_json['authentication']
+        self._authentication = authentication
 
         return self._authentication
 

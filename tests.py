@@ -972,7 +972,6 @@ class WCApiTestCases3Leg(WCApiTestCases):
     """ Tests for New wp-json/wc/v2 API with 3-leg """
     oauth1a_3leg = True
 
-
 @unittest.skipIf(platform.uname()[1] != "Derwents-MBP.lan", "should only work on my machine")
 class WPAPITestCasesBase(unittest.TestCase):
     def setUp(self):
@@ -991,6 +990,7 @@ class WPAPITestCasesBase(unittest.TestCase):
             'oauth1a_3leg':True,
         }
 
+    # @debug_on()
     def test_APIGet(self):
         self.wpapi = API(**self.api_params)
         response = self.wpapi.get('users/me')
@@ -1008,28 +1008,28 @@ class WPAPITestCasesBasic(WPAPITestCasesBase):
         })
         self.wpapi = API(**self.api_params)
 
-class WPAPITestCasesBasicV1(WPAPITestCasesBase):
-    def setUp(self):
-        super(WPAPITestCasesBasicV1, self).setUp()
-        self.api_params.update({
-            'user_auth': True,
-            'basic_auth': True,
-            'query_string_auth': False,
-            'version': 'wp/v1'
-        })
-        self.wpapi = API(**self.api_params)
-
-    def test_get_endpoint_url(self):
-        self.api_params.update({
-            'version': ''
-        })
-        self.wpapi = API(**self.api_params)
-        endpoint_url = self.wpapi.requester.endpoint_url('')
-        print endpoint_url
-
-    def test_APIGetWithSimpleQuery(self):
-        response = self.wpapi.get('posts')
-        self.assertIn(response.status_code, [200,201])
+# class WPAPITestCasesBasicV1(WPAPITestCasesBase):
+#     def setUp(self):
+#         super(WPAPITestCasesBasicV1, self).setUp()
+#         self.api_params.update({
+#             'user_auth': True,
+#             'basic_auth': True,
+#             'query_string_auth': False,
+#             'version': 'wp/v1'
+#         })
+#         self.wpapi = API(**self.api_params)
+#
+#     def test_get_endpoint_url(self):
+#         self.api_params.update({
+#             'version': ''
+#         })
+#         self.wpapi = API(**self.api_params)
+#         endpoint_url = self.wpapi.requester.endpoint_url('')
+#         print endpoint_url
+#
+#     def test_APIGetWithSimpleQuery(self):
+#         response = self.wpapi.get('posts')
+#         self.assertIn(response.status_code, [200,201])
 
 
 class WPAPITestCases3leg(WPAPITestCasesBase):
