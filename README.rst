@@ -4,13 +4,14 @@ Wordpress API - Python Client
 A Python wrapper for the Wordpress and WooCommerce REST APIs with oAuth1a 3leg support.
 
 Supports the Wordpress REST API v1-2, WooCommerce REST API v1-3 and WooCommerce WP-API v1-2 (with automatic OAuth3a handling).
-Forked from the excellent Woocommerce API written by Claudio Sanches and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
+Forked from the excellent WooCommerce API written by Claudio Sanches and modified to work with Wordpress: https://github.com/woocommerce/wc-api-python
 
 I created this fork because I prefer the way that the wc-api-python client interfaces with
 the Wordpress API compared to the existing python client, https://pypi.python.org/pypi/wordpress_json
 which does not support OAuth authentication, only Basic Authentication (very unsecure)
 
-Any suggestions about how this repository could be improved are welcome :)
+Any comments about how you're using the API and suggestions about how this repository could be improved are welcome :).
+You can find my contact info in my GitHub profile.
 
 Roadmap
 -------
@@ -258,6 +259,18 @@ Example of returned data:
     u'{"posts":[{"title":"Flying Ninja","id":70,...' // Json text
     >>> r.json()
     {u'posts': [{u'sold_individually': False,... // Dictionary data
+
+A note on DELETE requests.
+=====
+
+The extra keyword arguments passed to the function of a `__request` call (such as `.delete()`) to a `wordpress.API` object are used to modify a `Requests.request` call, this is to allow you to specify custom parameters to modify how the request is made such as `headers`. At the moment it only passes the `headers` parameter to requests, but if I see a use case for it, I can forward more of the parameters to `Requests`.
+The `delete` function doesn’t accept a data object because a HTTP DELETE request does not typically have a payload, and some implementations of a HTTP server would reject a DELETE request that has a payload.
+You can still pass api request parameters in the query string of the URL. I would suggest using a library like `urlparse` / `urllib.parse` to modify the query string if you are automatically deleting users.
+According the the [documentation](https://developer.wordpress.org/rest-api/reference/users/#delete-a-user) for deleting a user, you need to pass the `force` and `reassign` parameters to the API, which can be done by appending them to the endpoint URL.
+.. code-block:: python
+    >>> response = wpapi.delete(‘/users/<Id>?reassign=<other_id>&force=true’)
+    >>> response.json()
+    {“deleted”:true, ... }
 
 
 Changelog
