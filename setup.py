@@ -47,7 +47,8 @@ setup(
     ],
     tests_require=[
         'httmock',
-        'pytest'
+        'pytest',
+        'six'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

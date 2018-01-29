@@ -11,7 +11,7 @@ import re
 import posixpath
 
 try:
-    from urllib.parse import urlencode, quote, unquote, parse_qsl, urlparse, urlunparse
+    from urllib.parse import urlencode, quote, unquote, parse_qs, parse_qsl, urlparse, urlunparse
     from urllib.parse import ParseResult as URLParseResult
 except ImportError:
     from urllib import urlencode, quote, unquote
@@ -19,6 +19,7 @@ except ImportError:
     from urlparse import ParseResult as URLParseResult
 
 from collections import OrderedDict
+from six.moves import reduce
 
 from bs4 import BeautifulSoup
 

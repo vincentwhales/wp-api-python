@@ -113,7 +113,7 @@ class OAuth(Auth):
         self.force_nonce = kwargs.pop('force_nonce', None)
 
     def get_sign_key(self, consumer_secret, token_secret=None):
-        "gets consumer_secret and turns it into a string suitable for signing"
+        "gets consumer_secret and turns it into a bytestring suitable for signing"
         if not consumer_secret:
             raise UserWarning("no consumer_secret provided")
         token_secret = str(token_secret) if token_secret else ''
@@ -129,7 +129,7 @@ class OAuth(Auth):
         """ Adds the params to a given url, signs the url with sign_key if provided,
         otherwise generates sign_key automatically and returns a signed url """
         if isinstance(params, dict):
-            params = params.items()
+            params = list(params.items())
 
         urlparse_result = urlparse(url)
 
@@ -209,7 +209,11 @@ class OAuth(Auth):
 
         # print "\nstring_to_sign: %s" % repr(string_to_sign)
         # print "\nkey: %s" % repr(key)
-        sig = HMAC(key, string_to_sign, hmac_mod)
+        sig = HMAC(
+            bytes(key.encode('utf-8')),
+            bytes(string_to_sign.encode('utf-8')),
+            hmac_mod
+        )
         sig_b64 = binascii.b2a_base64(sig.digest())[:-1]
         # print "\nsig_b64: %s" % sig_b64
         return sig_b64
@@ -469,7 +473,7 @@ class OAuth_3Leg(OAuth):
         }
         try:
             login_form_action, login_form_data = self.get_form_info(login_form_response, 'loginform')
-        except AssertionError, exc:
+        except AssertionError as exc:
             self.parse_login_form_error(
                 login_form_response, exc, **login_form_params
             )
@@ -490,7 +494,7 @@ class OAuth_3Leg(OAuth):
         confirmation_response = authorize_session.post(login_form_action, data=login_form_data, allow_redirects=True)
         try:
             authorize_form_action, authorize_form_data = self.get_form_info(confirmation_response, 'oauth1_authorize_form')
-        except AssertionError, exc:
+        except AssertionError as exc:
             self.parse_login_form_error(
                 confirmation_response, exc, **login_form_params
             )
@@ -542,7 +546,7 @@ class OAuth_3Leg(OAuth):
             creds['access_token_secret'] = self.access_token_secret
         if creds:
             with open(self.creds_store, 'w+') as creds_store_file:
-                json.dump(creds, creds_store_file, ensure_ascii=False, encoding='utf-8')
+                json.dump(creds, creds_store_file, ensure_ascii=False)
 
     def retrieve_access_creds(self):
         """ retrieve the access_token and access_token_secret stored locally. """

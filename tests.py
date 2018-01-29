@@ -115,7 +115,7 @@ class WordpressTestCase(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 200,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -128,7 +128,7 @@ class WordpressTestCase(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 200,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -141,7 +141,7 @@ class WordpressTestCase(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 201,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -154,7 +154,7 @@ class WordpressTestCase(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 200,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -167,7 +167,7 @@ class WordpressTestCase(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 200,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -364,7 +364,7 @@ class TransportTestcases(unittest.TestCase):
         def woo_test_mock(*args, **kwargs):
             """ URL Mock """
             return {'status_code': 200,
-                    'content': 'OK'}
+                    'content': b'OK'}
 
         with HTTMock(woo_test_mock):
             # call requests
@@ -474,7 +474,7 @@ class OAuthTestcases(unittest.TestCase):
             ('oauth_nonce', self.rfc1_request_nonce),
             ('oauth_callback', self.rfc1_callback),
         ]
-        self.rfc1_request_signature = '74KNZJeDHnMBp0EMJ9ZHt/XKycU='
+        self.rfc1_request_signature = b'74KNZJeDHnMBp0EMJ9ZHt/XKycU='
 
 
         # # RFC EXAMPLE 3 DATA: https://tools.ietf.org/html/draft-hammer-oauth-10#section-3.4.1
@@ -553,7 +553,7 @@ class OAuthTestcases(unittest.TestCase):
         self.twitter_signature_base_string = r"POST&https%3A%2F%2Fapi.twitter.com%2F1%2Fstatuses%2Fupdate.json&include_entities%3Dtrue%26oauth_consumer_key%3Dxvz1evFS4wEEPTGEFPHBog%26oauth_nonce%3DkYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958%26oauth_token%3D370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb%26oauth_version%3D1.0%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen%252C%2520a%2520signed%2520OAuth%2520request%2521"
         self.twitter_token_secret = 'LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE'
         self.twitter_signing_key = 'kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw&LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE'
-        self.twitter_oauth_signature = 'tnnArxj06cWHq44gCs1OSKk/jLY='
+        self.twitter_oauth_signature = b'tnnArxj06cWHq44gCs1OSKk/jLY='
 
         self.lexev_consumer_key='your_app_key'
         self.lexev_consumer_secret='your_app_secret'
@@ -584,7 +584,7 @@ class OAuthTestcases(unittest.TestCase):
                ('oauth_timestamp',self.lexev_request_timestamp),
                ('oauth_version',self.lexev_version),
         ]
-        self.lexev_request_signature=r"iPdHNIu4NGOjuXZ+YCdPWaRwvJY="
+        self.lexev_request_signature=b"iPdHNIu4NGOjuXZ+YCdPWaRwvJY="
         self.lexev_resource_url='https://api.bitbucket.org/1.0/repositories/st4lk/django-articles-transmeta/branches'
 
     # def test_get_sign(self):
@@ -675,7 +675,10 @@ class OAuthTestcases(unittest.TestCase):
             self.rfc1_request_target_url,
             '%s&' % self.rfc1_consumer_secret
         )
-        self.assertEqual(rfc1_request_signature, self.rfc1_request_signature)
+        self.assertEqual(
+            str(rfc1_request_signature),
+            str(self.rfc1_request_signature)
+        )
 
         # TEST WITH RFC EXAMPLE 3 DATA
 
@@ -735,7 +738,7 @@ class OAuth3LegTestcases(unittest.TestCase):
         """ URL Mock """
         return {
             'status_code': 200,
-            'content': """
+            'content': b"""
                 {
                     "name": "Wordpress",
                     "description": "Just another WordPress site",
@@ -763,7 +766,7 @@ class OAuth3LegTestcases(unittest.TestCase):
         """ URL Mock """
         return {
             'status_code':200,
-            'content':"""oauth_token=XXXXXXXXXXXX&oauth_token_secret=YYYYYYYYYYYY"""
+            'content': b"""oauth_token=XXXXXXXXXXXX&oauth_token_secret=YYYYYYYYYYYY"""
         }
 
     def test_get_sign_key(self):
