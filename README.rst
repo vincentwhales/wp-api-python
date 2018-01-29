@@ -276,6 +276,11 @@ According the the [documentation](https://developer.wordpress.org/rest-api/refer
 Changelog
 ---------
 
+1.2.6 - 2018/01/29
+~~~~~~~~~~~~~~~~~~
+- Better Python3 support
+- Tested on Python v3.6.2 and v2.7.13
+
 1.2.5 - 2017/12/07
 ~~~~~~~~~~~~~~~~~~
 - Better UTF-8 support
